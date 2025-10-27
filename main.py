@@ -472,6 +472,70 @@ def test_searching_photos() -> None:
     logger.info("Поиск и анализ фотографий завершен.")
 
 
+def get_pipeline_stats() -> dict:
+    """
+    Собирает статистику по воронке обработки персон с помощью одного SQL-запроса.
+
+    Возвращает словарь со следующими метриками:
+    - total_persons: Всего персон в таблице.
+    - valid_persons: Прошли первичную валидацию LLM (есть имя, фамилия и meaningful_about).
+    - with_searchable_info_only: Валидные, у которых есть meaningful_about, но нет ссылок.
+    - with_links_only: Валидные, у которых есть ссылки, но нет meaningful_about.
+    - with_both_info_and_links: Валидные, у которых есть и meaningful_about, и ссылки.
+    - ready_for_html: Финальное количество персон с найденным summary, готовых к экспорту.
+    """
+    logger.info("Сбор статистики по воронке обработки...")
+    
+    db = DatabaseManager()
+    stats = {}
+
+    stats_query = f"""
+        SELECT
+            COUNT(*) AS total_persons,
+            
+            COUNT(CASE WHEN valid THEN 1 END) AS valid_persons,
+            
+            COUNT(CASE WHEN valid 
+                          AND (meaningful_about IS NOT NULL AND TRIM(meaningful_about) != '')
+                          AND (extracted_links IS NOT NULL AND array_length(extracted_links, 1) is null)
+                     THEN 1 END) AS with_meaningful_about_only,
+            
+            COUNT(CASE WHEN valid
+                          AND (meaningful_about IS NULL OR TRIM(meaningful_about) = '')
+                          AND (extracted_links IS NOT NULL AND array_length(extracted_links, 1) > 0)
+                     THEN 1 END) AS with_links_only,
+
+            COUNT(CASE WHEN valid
+                          AND (meaningful_about IS NOT NULL AND TRIM(meaningful_about) != '')
+                          AND (extracted_links IS NOT NULL AND array_length(extracted_links, 1) > 0)
+                     THEN 1 END) AS with_both_about_and_links,
+
+            COUNT(CASE WHEN valid
+                          AND (summary IS NOT NULL AND TRIM(summary) != '')
+                     THEN 1 END) AS ready_for_html
+
+        FROM {config.result_table_name};
+    """
+    
+    try:
+        result = db.execute_query(stats_query)
+        if result:
+            stats = result[0]
+        else:
+            logger.warning("Не удалось получить статистику, запрос вернул пустой результат.")
+            return {}
+
+    finally:
+        db.close()
+
+    logger.info("Статистика успешно собрана.")
+    logger.info("\n--- Статистика воронки обработки ---")
+    for key, value in stats.items():
+        logger.info(f"{key:<30}: {value}")
+    logger.info("------------------------------------")
+    return stats
+
+
 def export_to_html() -> None:
     """
     Экспортирует данные о персонах из БД в единый HTML-файл,
@@ -555,6 +619,9 @@ async def main() -> None:
     parser.add_argument("--perp", action="store_true",
                         help="Поиск информации и экспорт в Markdown"
     )
+    parser.add_argument("--stats", action="store_true",
+                        help="Анализ воронки"
+    )
     parser.add_argument("--photos", action="store_true",
                         help="Поиск фотографий из ссылок"
     )
@@ -570,6 +637,9 @@ async def main() -> None:
     parser.add_argument("--html", action="store_true",
                         help="Экспорт в html таблицу"
     )
+    parser.add_argument("--all", action="store_true",
+                        help="Полный проход"
+    )
     args = parser.parse_args()
 
     if args.dbcreate:
@@ -580,10 +650,21 @@ async def main() -> None:
         await test_llm(start_position=args.start, row_count=args.count)
     elif args.perp:
         await test_perpsearch(start_position=args.start, row_count=args.count, md_flag=args.md)
+        pipeline_stats = get_pipeline_stats()
     elif args.photos:
         test_searching_photos()
     elif args.html:
         export_to_html()
+    elif args.stats:
+        get_pipeline_stats()
+    elif args.all:
+        clean_and_create_db()
+        pre_llm()
+        await test_llm(start_position=args.start, row_count=args.count)
+        await test_perpsearch(start_position=args.start, row_count=args.count, md_flag=args.md)
+        # test_searching_photos()
+        export_to_html()
+        get_pipeline_stats()
     else:
         parser.print_help()
 
