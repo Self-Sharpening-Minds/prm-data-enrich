@@ -160,3 +160,28 @@ class LlmClient(BaseLLMClient):
             return False
 
         return response.get("is_valid", False)
+    
+    async def async_postcheck2(self, person: dict, summary: str, urls) -> bool:
+        """(async) postcheck2"""
+        pieces = [
+            f"- Имя: {person.get("meaningful_first_name", "")}",
+            f"- Фамилия: {person.get("meaningful_last_name", "")}",
+            f"- Доп. информация: {person.get("meaningful_about", "")}",
+            f"- Ссылки, названия, которые стоило проверить: {person.get("extracted_links", [])}"
+        ]
+        prompt = self._render_prompt("postcheck2", pieces=pieces, summary=summary, urls=urls)
+
+        if not prompt:
+            return False
+
+        response, _raw = await self._async_request_llm(
+            prompt=prompt,
+            model=self.config.check_model,
+            response_format="json_object"
+        )
+
+        if not isinstance(response, dict) or "is_valid" not in response:
+            self.logger.warning("Некорректный формат ответа; возвращаем False.")
+            return False
+
+        return response.get("is_valid", False)

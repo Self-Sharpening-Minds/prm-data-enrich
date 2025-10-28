@@ -302,15 +302,20 @@ async def process_person_for_search(
         )
 
         summary = search_result.get("summary")
+        urls = search_result.get("urls")
         if not summary: summary = ''
         is_summary_valid = await check_llm.async_postcheck(summary)
-
-        params = (
-            summary if is_summary_valid else None,
-            search_result.get("urls"),
-            search_result.get("confidence") if is_summary_valid else "low",
-            person_id
-        )
+        if is_summary_valid:
+            is_summary_valid = await check_llm.async_postcheck2(person, summary, urls)
+            params = (
+                summary if is_summary_valid else None,
+                urls,
+                search_result.get("confidence") if is_summary_valid else "low",
+                person_id
+            )
+        else:
+            params = (None, None, "first", person_id)
+            
         await asyncio.to_thread(db.execute_query, config.UPDATE_SUMMARY_QUERY, params)
 
         if exporter and is_summary_valid:
@@ -509,10 +514,18 @@ def get_pipeline_stats() -> dict:
                           AND (meaningful_about IS NOT NULL AND TRIM(meaningful_about) != '')
                           AND (extracted_links IS NOT NULL AND array_length(extracted_links, 1) > 0)
                      THEN 1 END) AS with_both_about_and_links,
-
+            
             COUNT(CASE WHEN valid
                           AND (summary IS NOT NULL AND TRIM(summary) != '')
-                     THEN 1 END) AS ready_for_html
+                     THEN 1 END) AS ready_for_html,
+
+            COUNT(CASE WHEN valid
+                          AND (confidence = 'first')
+                     THEN 1 END) AS not_passed_first,
+
+            COUNT(CASE WHEN valid
+                          AND (confidence != 'first' AND summary IS NULL)
+                     THEN 1 END) AS not_passed_second
 
         FROM {config.result_table_name};
     """
@@ -650,7 +663,7 @@ async def main() -> None:
         await test_llm(start_position=args.start, row_count=args.count)
     elif args.perp:
         await test_perpsearch(start_position=args.start, row_count=args.count, md_flag=args.md)
-        pipeline_stats = get_pipeline_stats()
+        get_pipeline_stats()
     elif args.photos:
         test_searching_photos()
     elif args.html:
