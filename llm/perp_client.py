@@ -240,8 +240,9 @@ class PerplexityClient(BaseLLMClient):
         pieces = [
             f"- Имя: {first_name}",
             f"- Фамилия: {last_name}",
-            f"- Доп. информация: {about}",
         ]
+        if about:
+            pieces.append(f"- Доп. информация: {about}")
         if extracted_links:
             links_str = ", ".join(extracted_links)
             pieces.append(f"- Найденные ссылки и профили, особенно обрати внимание на них: {links_str}")
