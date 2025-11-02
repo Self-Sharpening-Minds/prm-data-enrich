@@ -58,14 +58,27 @@ def pre_llm() -> None:
             FROM {config.result_table_name} ORDER BY person_id
         """
         persons = db.execute_query(select_query)
+        fields_to_normalize = [
+            'person_id', 'first_name','last_name',
+            'about', 'personal_channel_title', 'personal_channel_about'
+        ]
 
         for person in persons:
-            person_id = cleaner.normalize_empty(person.get('person_id'))
-            first_name = cleaner.clean_name_field(cleaner.normalize_empty(person.get('first_name')))
-            last_name = cleaner.clean_second_name_field(cleaner.normalize_empty(person.get('last_name')))
-            about = cleaner.normalize_empty(person.get('about'))
-            channel_title = cleaner.normalize_empty(person.get('personal_channel_title'))
-            channel_about = cleaner.normalize_empty(person.get('personal_channel_about'))
+            for field in fields_to_normalize:
+                person[field] = cleaner.normalize_empty(person.get(field))
+
+            person_id = person.get('person_id')
+            first_name = cleaner.clean_name_field(person.get('first_name'))
+            last_name = cleaner.clean_second_name_field(person.get('last_name'))
+            about = person.get('about')
+            channel_title = person.get('personal_channel_title')
+            channel_about = person.get('personal_channel_about')
+
+            person_extracted_links = cleaner.extract_links(
+                last_name,
+                about,
+                channel_about
+            )
 
             if first_name and ' ' in first_name and not last_name:
                 parts = first_name.split(' ', 1)
@@ -73,7 +86,7 @@ def pre_llm() -> None:
                     first_name, last_name = parts
 
             about_clean = cleaner.merge_about_fields(about, channel_title, channel_about)
-            params = (first_name, last_name, about_clean, person_id)
+            params = (first_name, last_name, about_clean, person_extracted_links, person_id)
             db.execute_query(config.UPDATE_MEANINGFUL_FIELDS_QUERY, params)
     finally:
         db.close()
@@ -106,7 +119,11 @@ def export_batch_to_db(db: DatabaseManager, parsed_chunk: dict[str, dict[str, An
         last_name = data.get('meaningful_last_name')
         about = data.get('meaningful_about')
 
-        is_valid = bool(first_name and last_name and about)
+        #TODO: может не здесь нужно сразу расставлять valid
+        person_extracted_links = db.execute_query(f"SELECT extracted_links FROM {config.result_table_name} WHERE person_id={person_id}")
+        extracted_links = person_extracted_links[0].get("extracted_links", None)
+
+        is_valid = bool(first_name and last_name and (about or extracted_links))
         params = (first_name, last_name, about, is_valid, person_id)
 
         try:
@@ -281,18 +298,24 @@ async def process_person_for_search(
             first_name=person.get("meaningful_first_name", ""),
             last_name=person.get("meaningful_last_name", ""),
             about=person.get("meaningful_about", ""),
+            extracted_links=person.get("extracted_links", [])
         )
 
         summary = search_result.get("summary")
+        urls = search_result.get("urls")
         if not summary: summary = ''
         is_summary_valid = await check_llm.async_postcheck(summary)
-
-        params = (
-            summary if is_summary_valid else None,
-            search_result.get("urls"),
-            search_result.get("confidence") if is_summary_valid else "low",
-            person_id
-        )
+        if is_summary_valid:
+            is_summary_valid = await check_llm.async_postcheck2(person, summary, urls)
+            params = (
+                summary if is_summary_valid else None,
+                urls,
+                search_result.get("confidence") if is_summary_valid else "low",
+                person_id
+            )
+        else:
+            params = (None, None, "first", person_id)
+            
         await asyncio.to_thread(db.execute_query, config.UPDATE_SUMMARY_QUERY, params)
 
         if exporter and is_summary_valid:
@@ -372,7 +395,7 @@ def test_searching_photos() -> None:
 
     select_query = f"""
         {config.SELECT_PERSONS_BASE_QUERY}
-        WHERE valid AND summary IS NOT NULL AND TRIM(summary) != '' and person_id=57844602
+        WHERE valid AND summary IS NOT NULL AND TRIM(summary) != ''
         ORDER BY person_id
     """
 
@@ -396,6 +419,8 @@ def test_searching_photos() -> None:
             if person_urls:
                 for url in person_urls:
                     web_image_urls.extend(photo_processor.extract_image_urls_from_page(url))
+                    if len(web_image_urls) > 50:
+                        web_image_urls = [] #TODO: когда слишком много фоток, алгоритм тупит
                 logger.debug(f"Найдено {len(web_image_urls)} изображений в вебе для person_id: {person_id}")
 
             local_avatars = []
@@ -450,6 +475,78 @@ def test_searching_photos() -> None:
     finally:
         db.close()
     logger.info("Поиск и анализ фотографий завершен.")
+
+
+def get_pipeline_stats() -> dict:
+    """
+    Собирает статистику по воронке обработки персон с помощью одного SQL-запроса.
+
+    Возвращает словарь со следующими метриками:
+    - total_persons: Всего персон в таблице.
+    - valid_persons: Прошли первичную валидацию LLM (есть имя, фамилия и meaningful_about).
+    - with_searchable_info_only: Валидные, у которых есть meaningful_about, но нет ссылок.
+    - with_links_only: Валидные, у которых есть ссылки, но нет meaningful_about.
+    - with_both_info_and_links: Валидные, у которых есть и meaningful_about, и ссылки.
+    - ready_for_html: Финальное количество персон с найденным summary, готовых к экспорту.
+    """
+    logger.info("Сбор статистики по воронке обработки...")
+    
+    db = DatabaseManager()
+    stats = {}
+
+    stats_query = f"""
+        SELECT
+            COUNT(*) AS total_persons,
+            
+            COUNT(CASE WHEN valid THEN 1 END) AS valid_persons,
+            
+            COUNT(CASE WHEN valid 
+                          AND (meaningful_about IS NOT NULL AND TRIM(meaningful_about) != '')
+                          AND (extracted_links IS NOT NULL AND array_length(extracted_links, 1) is null)
+                     THEN 1 END) AS with_meaningful_about_only,
+            
+            COUNT(CASE WHEN valid
+                          AND (meaningful_about IS NULL OR TRIM(meaningful_about) = '')
+                          AND (extracted_links IS NOT NULL AND array_length(extracted_links, 1) > 0)
+                     THEN 1 END) AS with_links_only,
+
+            COUNT(CASE WHEN valid
+                          AND (meaningful_about IS NOT NULL AND TRIM(meaningful_about) != '')
+                          AND (extracted_links IS NOT NULL AND array_length(extracted_links, 1) > 0)
+                     THEN 1 END) AS with_both_about_and_links,
+            
+            COUNT(CASE WHEN valid
+                          AND (summary IS NOT NULL AND TRIM(summary) != '')
+                     THEN 1 END) AS ready_for_html,
+
+            COUNT(CASE WHEN valid
+                          AND (confidence = 'first')
+                     THEN 1 END) AS not_passed_first,
+
+            COUNT(CASE WHEN valid
+                          AND (confidence != 'first' AND summary IS NULL)
+                     THEN 1 END) AS not_passed_second
+
+        FROM {config.result_table_name};
+    """
+    
+    try:
+        result = db.execute_query(stats_query)
+        if result:
+            stats = result[0]
+        else:
+            logger.warning("Не удалось получить статистику, запрос вернул пустой результат.")
+            return {}
+
+    finally:
+        db.close()
+
+    logger.info("Статистика успешно собрана.")
+    logger.info("\n--- Статистика воронки обработки ---")
+    for key, value in stats.items():
+        logger.info(f"{key:<30}: {value}")
+    logger.info("------------------------------------")
+    return stats
 
 
 def export_to_html() -> None:
@@ -523,17 +620,20 @@ async def main() -> None:
     Главная функция для запуска утилиты из командной строки.
     """
     parser = argparse.ArgumentParser(description="Инструменты для поиска информации с помощью LLM.")
-    parser.add_argument("--clean-db", action="store_true",
+    parser.add_argument("--dbcreate", action="store_true",
                         help="Очистка и подготовка базы данных"
     )
-    parser.add_argument("--pre-llm", action="store_true",
+    parser.add_argument("--prellm", action="store_true",
                         help="Предобработка данных"
     )
     parser.add_argument("--llm", action="store_true",
                         help="Обработка записей через LLM"
     )
-    parser.add_argument("--search", action="store_true",
+    parser.add_argument("--perp", action="store_true",
                         help="Поиск информации и экспорт в Markdown"
+    )
+    parser.add_argument("--stats", action="store_true",
+                        help="Анализ воронки"
     )
     parser.add_argument("--photos", action="store_true",
                         help="Поиск фотографий из ссылок"
@@ -547,23 +647,37 @@ async def main() -> None:
     parser.add_argument("--md", action="store_true", default=False,
                         help="Разрешить экспорт в md"
     )
-    parser.add_argument("--to-html", action="store_true",
+    parser.add_argument("--html", action="store_true",
                         help="Экспорт в html таблицу"
+    )
+    parser.add_argument("--all", action="store_true",
+                        help="Полный проход"
     )
     args = parser.parse_args()
 
-    if args.clean_db:
+    if args.dbcreate:
         clean_and_create_db()
-    elif args.pre_llm:
+    elif args.prellm:
         pre_llm()
     elif args.llm:
         await test_llm(start_position=args.start, row_count=args.count)
-    elif args.search:
+    elif args.perp:
         await test_perpsearch(start_position=args.start, row_count=args.count, md_flag=args.md)
+        get_pipeline_stats()
     elif args.photos:
         test_searching_photos()
-    elif args.to_html:
+    elif args.html:
         export_to_html()
+    elif args.stats:
+        get_pipeline_stats()
+    elif args.all:
+        clean_and_create_db()
+        pre_llm()
+        await test_llm(start_position=args.start, row_count=args.count)
+        await test_perpsearch(start_position=args.start, row_count=args.count, md_flag=args.md)
+        # test_searching_photos()
+        export_to_html()
+        get_pipeline_stats()
     else:
         parser.print_help()
 

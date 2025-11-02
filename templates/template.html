@@ -37,14 +37,29 @@
                                 <strong>Username:</strong> {{ person.username }}
                             </div>
                             
+                            {% if person.about: %}
                             <div class="about-section">
                                 <strong>About:</strong> {{ person.about }}
                             </div>
+                            {% endif %}
                             
+                            {% if person.personal_channel_title: %}
                             <div class="channel-section">
                                 <strong>Канал:</strong> {{ person.personal_channel_title }}<br>
                                 <strong>О канале:</strong> {{ person.personal_channel_about }}
                             </div>
+                            {% endif %}
+
+                            {% if person.extracted_links: %}
+                            <div class="urls-section">
+                                <strong>Извлеченные ссылки:</strong>
+                                <ul class="urls-list">
+                                    {% for url in person.extracted_links %}
+                                        <li><a href="{{ url }}" target="_blank">{{ url }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
                             
                             <div class="separator">---------</div>
                             

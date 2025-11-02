@@ -32,7 +32,7 @@ class LlmConfig:
 
 source_table_name = "person_source_data"
 cleaned_table_name = "cleaned_person_source_data"
-result_table_name = "testperson_result_data"
+result_table_name = "person_result_data"
 
 CHUNK_SIZE = 10
 
@@ -55,16 +55,17 @@ PATH_PROMPTS = 'prompts/'
 PATH_PRM_MEDIA = 'prm_media/'
 PATH_PERSON_TG_AVATARS = 'telegram/avatars/'
 
-ASYNC_LLM_REQUESTS_WORKERS = 2
+ASYNC_LLM_REQUESTS_WORKERS = 5
 MAX_RETRIES = 3
-ASYNC_SEARCH_REQUESTS_WORKERS = 5
+ASYNC_SEARCH_REQUESTS_WORKERS = 10
 
 SELECT_PERSONS_BASE_QUERY = f"SELECT * FROM {result_table_name}"
 UPDATE_MEANINGFUL_FIELDS_QUERY = f"""
     UPDATE {result_table_name}
     SET meaningful_first_name = %s,
         meaningful_last_name = %s,
-        meaningful_about = %s
+        meaningful_about = %s,
+        extracted_links = %s
     WHERE person_id = %s
 """
 UPDATE_LLM_RESULTS_QUERY = f"""

@@ -123,7 +123,10 @@ class DatabaseManager:
         """
         if drop_table:
             drop_query = f"DROP TABLE IF EXISTS {result_table_name};"
-            if not self._execute_with_transaction(drop_query, "удаление таблицы"):
+            if not self._execute_with_transaction(
+                drop_query, 
+                f"удаление таблицы {result_table_name}"
+            ):
                 return False
 
         query = f"""
@@ -157,6 +160,7 @@ class DatabaseManager:
             '' AS meaningful_first_name,
             '' AS meaningful_last_name,
             '' AS meaningful_about,
+            ARRAY[]::text[] AS extracted_links,
             '' AS summary,
             ARRAY[]::text[] AS urls,
             ARRAY[]::text[] AS photos

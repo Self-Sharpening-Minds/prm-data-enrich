@@ -1,6 +1,6 @@
 import re
 
-from config import EMOJI_PATTERN, ENRU_CHARS_PATTERN
+from config import EMOJI_PATTERN, ENRU_CHARS_PATTERN, URL_PATTERN
 
 
 def normalize_empty(value) -> str | None:
@@ -36,6 +36,14 @@ def clean_second_name_field(value) -> str | None:
     return value if len(value) >= 2 else None
 
 
+def extract_links(*fields: str | None):
+    found_items = []
+    for field in fields:
+        if field and isinstance(field, str):
+            found_items.extend(URL_PATTERN.findall(field))
+    
+    return list(dict.fromkeys(found_items))
+
 def should_move_lastname_to_about(last_name):
     if not last_name:
         return False
@@ -49,7 +57,6 @@ def clean_summary(text):
 
 
 def merge_about_fields(*fields):
-    # Берём уникальные, без эмодзи
     texts = []
     for f in fields:
         if f:
