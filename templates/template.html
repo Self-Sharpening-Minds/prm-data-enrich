@@ -15,9 +15,9 @@
         <table class="people-table">
             <thead>
                 <tr>
-                    <th width="5%">№</th>
-                    <th width="25%">Информация о человеке</th>
-                    <th width="40%">Резюме и ссылки</th>
+                    <th width="3%">№</th>
+                    <th width="20%">Информация о человеке</th>
+                    <th width="47%">Резюме и ссылки</th>
                     <th width="30%">Фотографии</th>
                 </tr>
             </thead>
@@ -71,9 +71,23 @@
                         </td>
                         
                         <td class="summary-section">
-                            <div class="summary-content">
+                            <!-- #TODO -->
+                            <!-- <div class="summary-content">
                                 {{ person.summary }}
+                            </div> -->
+                            <div class="facts-section">
+                                <strong>Новые факты:</strong>
+                                <ul class="fact-list">
+                                    {% for fact in person.summary[person.summary.find("[")+1:person.summary.find("]")].strip().split("\",") %}
+                                        <li><a target="_blank">{{ fact.replace("\"", "").strip() }}</a></li>
+                                    {% endfor %}
+                                </ul>
                             </div>
+                            <div class="separator">---------</div>
+                            <div class="meaningful-about">
+                                {{ person.summary[person.summary.find("summary") + 10:-2].strip() }}
+                            </div>
+                            <div class="separator">---------</div>
                             
                             <div class="urls-section">
                                 <strong>Ссылки:</strong>

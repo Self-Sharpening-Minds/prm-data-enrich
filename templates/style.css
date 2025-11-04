@@ -32,6 +32,8 @@ h1 {
     width: 100%;
     border-collapse: collapse;
     font-size: 14px;
+    table-layout: fixed; /* фиксированная ширина столбцов */
+    word-wrap: break-word;
 }
 
 .people-table th {
@@ -190,4 +192,46 @@ h1 {
     margin-bottom: 8px;
     padding-bottom: 4px;
     border-bottom: 2px solid #eaebec;
+}
+
+.facts-section {
+    background-color: #ffffff;
+    border-left: 4px solid #007bff;
+    padding: 10px 14px;
+    max-height: 200px;
+    overflow-y: auto;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    box-shadow: inset 0 0 6px rgba(0, 123, 255, 0.08);
+}
+
+.facts-section strong {
+    display: block;
+    font-size: 15px;
+    color: #0056b3;
+    margin-bottom: 6px;
+    letter-spacing: 0.3px;
+}
+
+.fact-list {
+    list-style-type: "✨ ";
+    padding-left: 1em;
+    margin: 0;
+}
+
+.fact-list li {
+    margin-bottom: 5px;
+    line-height: 1.5;
+}
+
+.fact-list a {
+    color: #000000;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.fact-list a:hover {
+    color: #084298;
+    text-shadow: 0 0 3px rgba(13, 110, 253, 0.3);
 }
