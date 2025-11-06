@@ -411,6 +411,7 @@ def test_searching_photos() -> None:
 
         for i, person in enumerate(persons, 1):
             person_id = person.get("person_id")
+            telegram_id = person.get("telegram_id")
             person_urls = person.get("urls", [])
 
             logger.info(f"[{i}/{total}] Обработка фотографий для person_id: {person_id}")
@@ -424,7 +425,7 @@ def test_searching_photos() -> None:
                 logger.debug(f"Найдено {len(web_image_urls)} изображений в вебе для person_id: {person_id}")
 
             local_avatars = []
-            avatars_dir = Path(config.PATH_PRM_MEDIA) / str(person_id) / config.PATH_PERSON_TG_AVATARS
+            avatars_dir = Path(config.PATH_PRM_MEDIA) / str(telegram_id) / config.PATH_PERSON_TG_AVATARS
             if avatars_dir.is_dir():
                 found_files = list(avatars_dir.glob('*.jpg'))
                 local_avatars = [str(p) for p in found_files]

@@ -137,40 +137,23 @@ class DatabaseManager:
             (data->>'telegram_id')::bigint AS telegram_id,
             data->>'first_name' AS first_name,
             data->>'last_name' AS last_name,
+            data->> 'birth_date' as birth_date,
             data->>'about' AS about,
             data->>'username' AS username,
-            data->>'lang_code' AS lang_code,
-            data->>'phone' AS phone,
-            (data->>'bot')::boolean AS bot,
-            (data->>'fake')::boolean AS fake,
-            (data->>'scam')::boolean AS scam,
-            (data->>'deleted')::boolean AS deleted,
-            (data->>'premium')::boolean AS premium,
-            (data->>'verified')::boolean AS verified,
-            (data->>'restricted')::boolean AS restricted,
-            (data->>'username_is_actual')::boolean AS username_is_actual,
             data->'personal_channel'->>'title' AS personal_channel_title,
             data->'personal_channel'->>'username' AS personal_channel_username,
             data->'personal_channel'->>'about' AS personal_channel_about,
             (data->'personal_channel'->>'channel_id')::bigint AS personal_channel_id,
-            (data->'personal_channel'->>'participants_count')::integer
-            AS personal_channel_participants_count,
             false AS valid,
-            '' AS confidence,
-            '' AS meaningful_first_name,
-            '' AS meaningful_last_name,
-            '' AS meaningful_about,
+            null::text AS confidence,
+            null::text AS meaningful_first_name,
+            null::text AS meaningful_last_name,
+            null::text AS meaningful_about,
             ARRAY[]::text[] AS extracted_links,
-            '' AS summary,
+            null::text AS summary,
             ARRAY[]::text[] AS urls,
             ARRAY[]::text[] AS photos
         FROM {source_table_name}
-        WHERE data ? 'about'
-        AND {source_table_name}.person_id IN (
-            SELECT telegram_id
-            FROM public.channel_subscribers
-            WHERE channel_id = -1002240495824
-        )
         """
 
         return self._execute_with_transaction(
