@@ -5,7 +5,7 @@ import asyncpg
 from config import DatabaseConfig
 
 
-class DatabaseManager:
+class AsyncDatabaseManager:
     """Менеджер асинхронной для работы с базой данных PostgreSQL.
     Обеспечивает подключение к БД, выполнение запросов, создание таблиц
     и другие операции с базой данных.
@@ -32,7 +32,7 @@ class DatabaseManager:
                 min_size=1,
                 max_size=10,
             )
-            self.logger.info(
+            self.logger.debug(
                 f"Успешное подключение к БД: {self.config.host}:{self.config.port}/{self.config.database}"
             )
         except Exception as e:
@@ -43,10 +43,10 @@ class DatabaseManager:
         """Закрытие пула соединений."""
         if self.pool:
             await self.pool.close()
-            self.logger.info("Соединение с БД закрыто")
+            self.logger.debug("Соединение с БД закрыто")
 
     async def execute(self, query: str, *params) -> str:
-        """Выполнение запроса без возврата результата (INSERT/UPDATE/DELETE)."""
+        """Выполнение запроса без возврата результата."""
         if not self.pool:
             raise RuntimeError("Нет активного подключения к БД")
         async with self.pool.acquire() as conn:
@@ -55,7 +55,7 @@ class DatabaseManager:
         return "ok"
 
     async def fetch(self, query: str, *params) -> list[dict[str, Any]]:
-        """Выполнение SELECT-запроса."""
+        """Выполнение запроса с возвратом результата."""
         if not self.pool:
             raise RuntimeError("Нет активного подключения к БД")
         async with self.pool.acquire() as conn:

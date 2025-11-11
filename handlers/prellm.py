@@ -1,32 +1,30 @@
-import asyncio
 import logging
-from utils.db import DatabaseManager
+from utils.db import AsyncDatabaseManager
 from utils import cleaner
 import config
 
 logger = logging.getLogger(__name__)
 
-async def run(worker_id: int, person_id: int):
-    """Выполняет предварительную очистку данных перед обработкой LLM.
-    Извлекает необработанные данные, применяет к ним функции очистки
-    (удаление мусора, нормализация) и обновляет "meaningful" поля в базе данных.
-    """
-    logger.info(f"[Воркер #{worker_id}][person_id={person_id}] Начинаем prellm")
 
-    db = DatabaseManager()
+async def run(worker_id: int, person_id: int):
+    """Асинхронная предварительная очистка данных перед обработкой LLM."""
+    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ▶️ Начинаем prellm")
+
+    db = AsyncDatabaseManager()
+    await db.connect()
+
     try:
         select_query = f"""
             SELECT person_id, first_name, last_name, about,
                    personal_channel_title, personal_channel_about
             FROM {config.result_table_name}
-            WHERE person_id = %s
+            WHERE person_id = $1
         """
-        person_rows = db.execute_query(select_query, (person_id,))
+        person_rows = await db.fetch(select_query, person_id)
 
         if not person_rows:
-            logger.warning(f"[Воркер #{worker_id}][person_id={person_id}] Не найден в БД")
+            logger.warning(f"[Воркер #{worker_id}][person_id={person_id}] ⚠️ Не найден в БД")
             return
-
         person = person_rows[0]
 
         fields_to_normalize = [
@@ -52,18 +50,18 @@ async def run(worker_id: int, person_id: int):
         about_clean = cleaner.merge_about_fields(about, channel_title, channel_about)
 
         params = (first_name, last_name, about_clean, person_extracted_links, person_id)
-        db.execute_query(config.UPDATE_MEANINGFUL_FIELDS_QUERY, params)
+        await db.execute(config.UPDATE_MEANINGFUL_FIELDS_QUERY, *params)
 
-        #TODO
-        db.execute_query(
-            f"UPDATE {config.result_table_name} SET flag_prellm = TRUE WHERE person_id = %s",
-            (person_id,)
+        #TODO: можно одновременно с прошлым запросом делать
+        await db.execute(
+            f"UPDATE {config.result_table_name} SET flag_prellm = TRUE WHERE person_id = $1",
+            person_id
         )
 
-        logger.info(f"[Воркер #{worker_id}][person_id={person_id}] ✅ prellm завершен")
+        logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ prellm завершен успешно")
 
     except Exception as e:
-        logger.exception(f"[Воркер #{worker_id}][person_id={person_id}] Ошибка: {e}")
-        raise e
+        logger.exception(f"[Воркер #{worker_id}][person_id={person_id}] ❌ Ошибка: {e}")
+        raise
     finally:
-        db.close()
+        await db.close()

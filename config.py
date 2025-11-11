@@ -62,29 +62,29 @@ ASYNC_SEARCH_REQUESTS_WORKERS = 10
 SELECT_PERSONS_BASE_QUERY = f"SELECT * FROM {result_table_name}"
 UPDATE_MEANINGFUL_FIELDS_QUERY = f"""
     UPDATE {result_table_name}
-    SET meaningful_first_name = %s,
-        meaningful_last_name = %s,
-        meaningful_about = %s,
-        extracted_links = %s
-    WHERE person_id = %s
+    SET meaningful_first_name = $1,
+        meaningful_last_name = $2,
+        meaningful_about = $3,
+        extracted_links = $4
+    WHERE person_id = $5
 """
 UPDATE_LLM_RESULTS_QUERY = f"""
     UPDATE {result_table_name}
-    SET meaningful_first_name = %s,
-        meaningful_last_name = %s,
-        meaningful_about = %s,
-        valid = %s
-    WHERE person_id = %s
+    SET meaningful_first_name = $1,
+        meaningful_last_name = $2,
+        meaningful_about = $3,
+        valid = $4
+    WHERE person_id = $5
 """
 UPDATE_SUMMARY_QUERY = f"""
     UPDATE {result_table_name}
-    SET summary = %s,
-        urls = %s,
-        confidence = %s
-    WHERE person_id = %s
+    SET summary = $1,
+        urls = $2,
+        confidence = $3
+    WHERE person_id = $4
 """
 UPDATE_PHOTOS_QUERY = f"""
     UPDATE {result_table_name}
-    SET photos = %s
-    WHERE person_id = %s
+    SET photos = $1
+    WHERE person_id = $2
 """

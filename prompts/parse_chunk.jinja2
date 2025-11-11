@@ -35,20 +35,12 @@
 ФОРМАТ ОТВЕТА (строго JSON):
 
 {
-    "0": {
-        "person_id": 8194,
-        "meaningful_first_name": "Иван",
-        "meaningful_last_name": "Иванов",
-        "meaningful_about": "CEO, thinkmobile.agency"
-    }
-    "1": {
-        "person_id": "412412",
-        "meaningful_first_name": "Мария",
-        "meaningful_last_name": "Макарова",
-        "meaningful_about": ""
-    }
+    "person_id": "412412",
+    "meaningful_first_name": "Мария",
+    "meaningful_last_name": "Макарова",
+    "meaningful_about": ""
 }
 
 ---
-ДАННЫЕ ДЛЯ ОБРАБОТКИ (количество: {{ chunk_size }} ):
+ДАННЫЕ ДЛЯ ОБРАБОТКИ:
 {{ chunk_json }}

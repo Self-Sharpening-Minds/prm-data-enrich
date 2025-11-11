@@ -1,6 +1,7 @@
 import logging
-from utils.db import DatabaseManager
+from utils.db import AsyncDatabaseManager
 import config
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +26,15 @@ TASK_FLAGS = {
 }
 
 
-def fill_task_queue() -> None:
-    db = DatabaseManager()
+async def fill_task_queue() -> None:
+    db = AsyncDatabaseManager()
+    await db.connect()
     try:
         for task_type in TASK_TYPES:
             condition = TASK_RULES[task_type]
             done_flag = TASK_FLAGS[task_type]
 
-            logger.info(f"Проверяем задачи типа '{task_type}'...")
+            logger.debug(f"Проверяем задачи типа '{task_type}'...")
 
             insert_query = f"""
                 INSERT INTO task_queue (person_id, task_type, status)
@@ -47,10 +49,10 @@ def fill_task_queue() -> None:
                   );
             """
 
-            inserted = db.execute_query(insert_query)
-            logger.info(f"Добавлены новые задачи типа '{task_type}': {inserted}")
+            await db.execute(insert_query)
+            #TODO: logger.info(f"Добавлены новые задачи типа '{task_type}': {количество}")
 
         logger.info("Очередь задач успешно обновлена.")
 
     finally:
-        db.close()
+        await db.close()
