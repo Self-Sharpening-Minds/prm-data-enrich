@@ -1,11 +1,9 @@
 import logging
 import sys
-from datetime import datetime
-from pathlib import Path
 
 
 def setup_logging(level=logging.INFO, log_dir: str = "logs"):
-    """Настройка логирования для всего проекта
+    """Настройка логирования
     [PRM-0] [2025-10-17 18:12:35] [file:34:func] - level - message
     """
 
