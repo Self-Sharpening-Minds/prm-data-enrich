@@ -48,7 +48,7 @@ async def process_task(db: AsyncDatabaseManager, task: dict, worker_id: int):
         return
 
     try:
-        logger.info(f"[Воркер #{worker_id}][person_id={person_id}] ▶️ Выполнение задачи {task_type}")
+        logger.info(f"[Воркер #{worker_id}][person_id={person_id}] Начало выполнения задачи {task_type}")
         await handler(worker_id, person_id)
         await db.execute(
             "UPDATE task_queue SET status='done', finished_at=NOW() WHERE id=$1",
@@ -83,22 +83,3 @@ async def worker_loop(worker_id: int, db: AsyncDatabaseManager):
         except Exception as e:
             logger.exception(f"[Воркер #{worker_id}] Ошибка в цикле: {e}")
             await asyncio.sleep(5)
-
-
-async def main():
-    workers = 1
-    db = AsyncDatabaseManager()
-    await db.connect()
-    await fill_task_queue()
-    await asyncio.sleep(3)
-
-    tasks = [worker_loop(i, db) for i in range(workers)]
-    try:
-        await asyncio.gather(*tasks)
-    finally:
-        await db.close()
-        logger.info("Все воркеры завершили работу")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

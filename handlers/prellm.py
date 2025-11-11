@@ -1,14 +1,15 @@
 import logging
-from utils.db import AsyncDatabaseManager
-from utils import cleaner
+
 import config
+from utils import cleaner
+from utils.db import AsyncDatabaseManager
 
 logger = logging.getLogger(__name__)
 
 
-async def run(worker_id: int, person_id: int):
+async def run(worker_id: int, person_id: int) -> None:
     """Асинхронная предварительная очистка данных перед обработкой LLM."""
-    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ▶️ Начинаем prellm")
+    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] Начинаем prellm")
 
     db = AsyncDatabaseManager()
     await db.connect()
@@ -52,7 +53,7 @@ async def run(worker_id: int, person_id: int):
         params = (first_name, last_name, about_clean, person_extracted_links, person_id)
         await db.execute(config.UPDATE_MEANINGFUL_FIELDS_QUERY, *params)
 
-        #TODO: можно одновременно с прошлым запросом делать
+        # TODO: можно одновременно с прошлым запросом делать
         await db.execute(
             f"UPDATE {config.result_table_name} SET flag_prellm = TRUE WHERE person_id = $1",
             person_id

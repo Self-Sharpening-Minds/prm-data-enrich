@@ -1,38 +1,29 @@
-# handlers/perp.py
 import logging
-from utils.db import AsyncDatabaseManager
-from llm.perp_client import PerplexityClient
+
 import config
+from llm.perp_client import PerplexityClient
+from utils.db import AsyncDatabaseManager
 
 logger = logging.getLogger(__name__)
-
-_perp_client = None
-
-def get_perp_client():
-    """Получает или создает глобальный клиент Perplexity."""
-    global _perp_client
-    if _perp_client is None:
-        _perp_client = PerplexityClient()
-    return _perp_client
 
 
 async def run(worker_id: int, person_id: int):
     """Асинхронный поиск информации через Perplexity для одного человека."""
-    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ▶️ Начинаем Perplexity поиск")
+    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] Начинаем Perplexity поиск")
 
     db = AsyncDatabaseManager()
     await db.connect()
-    perp_client = get_perp_client()
+    perp_client = PerplexityClient()
 
     try:
         select_query = f"""
-            SELECT person_id, meaningful_first_name, meaningful_last_name, 
+            SELECT person_id, meaningful_first_name, meaningful_last_name,
                    meaningful_about, extracted_links
-            FROM {config.result_table_name} 
+            FROM {config.result_table_name}
             WHERE person_id = $1 AND valid = TRUE
         """
         person_rows = await db.fetch(select_query, person_id)
-        
+
         if not person_rows:
             logger.warning(f"[Воркер #{worker_id}][person_id={person_id}] ⚠️ Человек не найден или не валиден")
             return
@@ -52,10 +43,7 @@ async def run(worker_id: int, person_id: int):
 
         await db.execute(
             config.UPDATE_SUMMARY_QUERY,
-            summary,
-            urls,
-            confidence,
-            person_id
+            summary, urls, confidence, person_id
         )
 
         await db.execute(
