@@ -19,7 +19,7 @@ async def run(worker_id: int, person_id: int):
     try:
         select_query = f"""
             SELECT person_id, summary, urls, confidence
-            FROM {config.result_table_name} 
+            FROM {config.result_table_name}
             WHERE person_id = $1 AND flag_perp = TRUE
         """
         person_rows = await db.fetch(select_query, person_id)

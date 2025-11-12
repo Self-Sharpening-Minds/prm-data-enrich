@@ -58,6 +58,7 @@ PATH_PERSON_TG_AVATARS = 'telegram/avatars/'
 MAX_RETRIES = 3
 ASYNC_WORKERS = 4
 
+# ----- sql_queries -----
 SELECT_PERSONS_BASE_QUERY = f"SELECT * FROM {result_table_name}"
 UPDATE_MEANINGFUL_FIELDS_QUERY = f"""
     UPDATE {result_table_name}
@@ -86,4 +87,90 @@ UPDATE_PHOTOS_QUERY = f"""
     UPDATE {result_table_name}
     SET photos = $1
     WHERE person_id = $2
+"""
+DROP_AND_CREATE_TASK_QUEUE_QUERY = """
+    DROP TABLE IF EXISTS task_queue;
+    CREATE TABLE IF NOT EXISTS task_queue (
+        id SERIAL PRIMARY KEY,
+        person_id INTEGER NOT NULL,
+        task_type TEXT NOT NULL,               -- prellm, llm, perp, postcheck, postcheck2, photos
+        status TEXT NOT NULL DEFAULT 'pending', -- pending, in_progress, done, failed
+        created_at TIMESTAMP DEFAULT NOW(),
+        started_at TIMESTAMP,
+        finished_at TIMESTAMP,
+        retries INT DEFAULT 0,
+        last_error TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_task_status ON task_queue (status);
+    CREATE INDEX IF NOT EXISTS idx_task_person ON task_queue (person_id);
+"""
+DROP_AND_CREATE_CLEANED_TABLE_QUERY = f"""
+    DROP TABLE IF EXISTS {cleaned_table_name};
+    CREATE TABLE {cleaned_table_name} AS
+    SELECT DISTINCT ON ((data->>'telegram_id')::bigint) *
+    FROM {source_table_name}
+    WHERE data ? 'about'
+    ORDER BY (data->>'telegram_id')::bigint, fetch_date DESC;
+"""
+DROP_AND_CREATE_RESULT_TABLE_QUERY = f"""
+    DROP TABLE IF EXISTS {result_table_name};
+    CREATE TABLE {result_table_name} AS
+    SELECT
+        person_id::bigint AS person_id,
+        fetch_date::timestamp without time zone AS fetch_date,
+        (data->>'telegram_id')::bigint AS telegram_id,
+        data->>'first_name' AS first_name,
+        data->>'last_name' AS last_name,
+        data->>'birth_date' as birth_date,
+        data->>'about' AS about,
+        data->>'username' AS username,
+        data->'personal_channel'->>'title' AS personal_channel_title,
+        data->'personal_channel'->>'username' AS personal_channel_username,
+        data->'personal_channel'->>'about' AS personal_channel_about,
+        (data->'personal_channel'->>'channel_id')::bigint AS personal_channel_id,
+        false AS flag_prellm,
+        false AS flag_llm,
+        false AS valid,
+        false AS flag_perp,
+        false AS flag_postcheck1,
+        false AS flag_postcheck2,
+        false AS done,
+        false AS flag_photos,
+        null::text AS meaningful_first_name,
+        null::text AS meaningful_last_name,
+        null::text AS meaningful_about,
+        ARRAY[]::text[] AS extracted_links,
+        null::text AS summary,
+        null::text AS confidence,
+        ARRAY[]::text[] AS urls,
+        ARRAY[]::text[] AS photos
+    FROM {source_table_name};
+"""
+STATS_QUERY = f"""
+    SELECT
+        COUNT(*) AS total_persons,
+        COUNT(CASE WHEN flag_prellm THEN 1 END) AS prellm_done,
+        COUNT(CASE WHEN flag_llm THEN 1 END) AS llm_done,
+        COUNT(CASE WHEN flag_perp THEN 1 END) AS perp_done,
+        COUNT(CASE WHEN flag_postcheck1 THEN 1 END) AS postcheck1_done,
+        COUNT(CASE WHEN flag_postcheck2 THEN 1 END) AS postcheck2_done
+    FROM {result_table_name};
+"""
+SELECT_DONE_QUERY = f"""
+    SELECT *
+    FROM {result_table_name}
+    WHERE done = TRUE
+    ORDER BY person_id;
+"""
+TAKE_TASK_IN_PROGRESS_QUERY = """
+    UPDATE task_queue
+    SET status = 'in_progress', started_at = NOW()
+    WHERE id = (
+        SELECT id FROM task_queue
+        WHERE status = 'pending'
+        ORDER BY created_at
+        FOR UPDATE SKIP LOCKED
+        LIMIT 1
+    )
+    RETURNING id, person_id, task_type;
 """

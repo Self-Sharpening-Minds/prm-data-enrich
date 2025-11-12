@@ -54,7 +54,7 @@
 #             ]
 
 #             all_human_face_images = web_human_face_images + local_human_face_images
-            
+
 #             if not all_human_face_images:
 #                 logger.warning(f"❌ Найдено {len(web_human_face_images)} веб-фото с лицом и {len(local_human_face_images)} локальных фото с лицом для person_id: {person_id}.")
 #                 continue

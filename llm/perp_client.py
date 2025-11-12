@@ -246,7 +246,7 @@ class PerplexityClient(BaseLLMClient):
         if extracted_links:
             links_str = ", ".join(extracted_links)
             pieces.append(f"- Найденные ссылки и профили, особенно обрати внимание на них: {links_str}")
-            
+
         prompt = self._render_prompt(
             "perp_search",
             pieces=pieces

@@ -1,7 +1,7 @@
 import logging
-from utils.db import AsyncDatabaseManager
+
 import config
-import asyncio
+from utils.db import AsyncDatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ async def fill_task_queue() -> None:
             """
 
             await db.execute(insert_query)
-            #TODO: logger.info(f"Добавлены новые задачи типа '{task_type}': {количество}")
+            # TODO: logger.info(f"Добавлены новые задачи типа '{task_type}': {количество}")
 
         logger.info("Очередь задач успешно обновлена.")
 

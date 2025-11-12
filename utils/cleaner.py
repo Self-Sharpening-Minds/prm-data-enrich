@@ -41,8 +41,9 @@ def extract_links(*fields: str | None):
     for field in fields:
         if field and isinstance(field, str):
             found_items.extend(URL_PATTERN.findall(field))
-    
+
     return list(dict.fromkeys(found_items))
+
 
 def should_move_lastname_to_about(last_name):
     if not last_name:

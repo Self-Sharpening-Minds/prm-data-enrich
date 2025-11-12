@@ -1,7 +1,7 @@
 import logging
 from io import BytesIO
-from urllib.parse import urljoin
 from pathlib import Path
+from urllib.parse import urljoin
 
 import config
 import face_recognition
@@ -44,7 +44,7 @@ class PhotoProcessor:
         except requests.RequestException as e:
             logger.debug(f"Ошибка запроса к URL {url}: {e}")
             return None
-        
+
     def _get_image_data(self, source: str) -> bytes | None:
         """
         Получает бинарные данные изображения из источника.

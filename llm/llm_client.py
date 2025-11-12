@@ -141,7 +141,7 @@ class LlmClient(BaseLLMClient):
             self.logger.warning("Ожидался словарь, но получен другой тип; возвращаем {}.")
             return {}
         return response
-    
+
     async def async_parse_single_to_meaningful(self, person_data: dict) -> dict:
         """
         Обрабатывает данные одного человека через LLM.
@@ -178,7 +178,7 @@ class LlmClient(BaseLLMClient):
             return False
 
         return response.get("is_valid", False)
-    
+
     async def async_postcheck2(self, person: dict, summary: str, urls) -> bool:
         """(async) postcheck2"""
         pieces = [

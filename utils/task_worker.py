@@ -1,11 +1,10 @@
 import asyncio
 import logging
-from logger import setup_logging
-from utils.db import AsyncDatabaseManager
-from handlers import prellm, llm, perp, postcheck1, postcheck2
-from services.fill_task_queue import fill_task_queue
 
-setup_logging(level=logging.INFO)
+import config
+from handlers import llm, perp, postcheck1, postcheck2, prellm
+from utils.db import AsyncDatabaseManager
+
 logger = logging.getLogger(__name__)
 
 HANDLERS = {
@@ -20,19 +19,7 @@ HANDLERS = {
 
 async def fetch_task(db: AsyncDatabaseManager):
     """Берёт одну задачу из очереди (status='pending') и помечает её как 'in_progress'."""
-    query = """
-        UPDATE task_queue
-        SET status = 'in_progress', started_at = NOW()
-        WHERE id = (
-            SELECT id FROM task_queue
-            WHERE status = 'pending' and task_type = 'postcheck2'
-            ORDER BY created_at
-            FOR UPDATE SKIP LOCKED
-            LIMIT 1
-        )
-        RETURNING id, person_id, task_type;
-    """
-    rows = await db.fetch(query)
+    rows = await db.fetch(config.TAKE_TASK_IN_PROGRESS_QUERY)
     return rows[0] if rows else None
 
 
@@ -48,7 +35,7 @@ async def process_task(db: AsyncDatabaseManager, task: dict, worker_id: int):
         return
 
     try:
-        logger.info(f"[Воркер #{worker_id}][person_id={person_id}] Начало выполнения задачи {task_type}")
+        logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] Начало выполнения задачи {task_type}")
         await handler(worker_id, person_id)
         await db.execute(
             "UPDATE task_queue SET status='done', finished_at=NOW() WHERE id=$1",

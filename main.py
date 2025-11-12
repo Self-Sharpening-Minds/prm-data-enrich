@@ -1,20 +1,21 @@
 import argparse
 import asyncio
-import logging
-from pathlib import Path
 import base64
+import logging
 import mimetypes
-from jinja2 import Environment, FileSystemLoader
+from pathlib import Path
 
 import config
+from jinja2 import Environment, FileSystemLoader
 from logger import setup_logging
+from services.fill_task_queue import fill_task_queue
 from utils import cleaner
 from utils.db import AsyncDatabaseManager
-from services.fill_task_queue import fill_task_queue
-from task_worker import worker_loop
+from utils.task_worker import worker_loop
 
 setup_logging(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 async def clean_and_create_db() -> None:
     logger.info("🔄 Подготовка базы данных...")
@@ -22,33 +23,9 @@ async def clean_and_create_db() -> None:
     await db.connect()
 
     try:
-        await db.create_cleaned_table(
-            source_table_name=config.source_table_name,
-            new_table_name=config.cleaned_table_name
-        )
-        await db.create_result_table(
-            source_table_name=config.cleaned_table_name,
-            result_table_name=config.result_table_name,
-            drop_table=True
-        )
-        await db.execute(
-            """
-            DROP TABLE IF EXISTS task_queue;
-            CREATE TABLE IF NOT EXISTS task_queue (
-                id SERIAL PRIMARY KEY,
-                person_id INTEGER NOT NULL,
-                task_type TEXT NOT NULL,               -- prellm, llm, perp, postcheck, postcheck2, photos
-                status TEXT NOT NULL DEFAULT 'pending', -- pending, in_progress, done, failed
-                created_at TIMESTAMP DEFAULT NOW(),
-                started_at TIMESTAMP,
-                finished_at TIMESTAMP,
-                retries INT DEFAULT 0,
-                last_error TEXT
-            );
-            CREATE INDEX IF NOT EXISTS idx_task_status ON task_queue (status);
-            CREATE INDEX IF NOT EXISTS idx_task_person ON task_queue (person_id);
-            """
-        )
+        await db.execute(config.DROP_AND_CREATE_CLEANED_TABLE_QUERY)
+        await db.execute(config.DROP_AND_CREATE_RESULT_TABLE_QUERY)
+        await db.execute(config.DROP_AND_CREATE_TASK_QUEUE_QUERY)
         logger.info("✅ Таблицы успешно пересозданы")
     finally:
         await db.close()
@@ -67,20 +44,11 @@ async def get_pipeline_stats() -> dict:
     - ready_for_html: Финальное количество персон с найденным summary, готовых к экспорту.
     """
     logger.info("Сбор статистики по флагам этапов...")
-    
+
     db = AsyncDatabaseManager()
     await db.connect()
     try:
-        query = f"""
-            SELECT
-                COUNT(*) AS total_persons,
-                COUNT(CASE WHEN flag_prellm THEN 1 END) AS prellm_done,
-                COUNT(CASE WHEN flag_llm THEN 1 END) AS llm_done,
-                COUNT(CASE WHEN flag_perp THEN 1 END) AS perp_done,
-                COUNT(CASE WHEN flag_postcheck1 THEN 1 END) AS postcheck1_done,
-                COUNT(CASE WHEN flag_postcheck2 THEN 1 END) AS postcheck2_done
-            FROM {config.result_table_name};
-        """
+        query = config.STATS_QUERY
         rows = await db.fetch(query)
         stats = rows[0] if rows else {}
     finally:
@@ -105,12 +73,7 @@ async def export_to_html() -> None:
     db = AsyncDatabaseManager()
     await db.connect()
     try:
-        query = f"""
-            SELECT *
-            FROM {config.result_table_name}
-            WHERE flag_postcheck2 = TRUE
-            ORDER BY person_id;
-        """
+        query = config.SELECT_DONE_QUERY
         persons = await db.fetch(query)
     finally:
         await db.close()
@@ -156,7 +119,7 @@ async def run_workers(count: int) -> None:
 
     if count <= 0:
         count = config.ASYNC_WORKERS
-    
+
     workers = [worker_loop(i, db) for i in range(count)]
 
     try:
@@ -191,4 +154,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Завершение работы...")
