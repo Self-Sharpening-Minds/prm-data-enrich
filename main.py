@@ -1,11 +1,11 @@
 import argparse
 import asyncio
 import base64
+import json
 import logging
 import mimetypes
 from pathlib import Path
 from typing import Any
-import json
 
 import config
 from jinja2 import Environment, FileSystemLoader
@@ -104,7 +104,7 @@ async def export_to_json():
     try:
         query = """SELECT * FROM public.person_result_data WHERE done = TRUE;"""
         persons = await db.fetch(query)
-                
+
         for person in persons:
             person['fetch_date'] = str(person.get('fetch_date', ''))
             original_summary = person.get('summary', '')
@@ -113,18 +113,18 @@ async def export_to_json():
             person_summary = ''
 
             if original_summary:
-                for fact in original_summary[original_summary.find("[")+1:original_summary.find("]")].strip().split("\","):
+                for fact in original_summary[original_summary.find("[") + 1:original_summary.find("]")].strip().split("\","):
                     person_facts.append(fact.replace("\"", "").strip())
                 person_summary = original_summary[original_summary.find("summary") + 10:-2].strip()
-                    
+
             person['summary'] = person_summary
             person['new_facts'] = person_facts
-        
-        with open('persons_export.json', 'w', encoding='utf-8') as f:
+
+        with open('people_analysis.json', 'w', encoding='utf-8') as f:
             json.dump(persons, f, ensure_ascii=False, indent=2)
-        
-        logger.info(f"✅ Экспортировано {len(persons)} записей в persons_export.json")
-        
+
+        logger.info(f"✅ Экспортировано {len(persons)} записей в people_analysis.json")
+
     except Exception as e:
         logger.error(f"❌ Ошибка при экспорте: {e}")
     finally:
