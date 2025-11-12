@@ -88,7 +88,7 @@ async def run(worker_id: int, person_id: int) -> None:
         summary = person_data.get("summary", "")
         is_valid = await perform_postcheck1(llm_client, summary, worker_id, person_id)
 
-        await save_postcheck1_result(db, person_id, True)
+        await save_postcheck1_result(db, person_id, is_valid)
 
         logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ PostCheck1 завершен. Валидность: {is_valid}")
 

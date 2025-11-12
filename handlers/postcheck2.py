@@ -68,7 +68,7 @@ async def perform_postcheck2(llm_client: LlmClient, person_data: dict, summary: 
     Returns:
         bool: True, если summary валиден, False в противном случае.
     """
-    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ▶️ Запуск проверки PostCheck2")
+    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] Запуск проверки PostCheck2")
     return await llm_client.async_postcheck2(person_data, summary, urls)
 
 
@@ -96,7 +96,7 @@ async def run(worker_id: int, person_id: int) -> None:
 
         is_valid = await perform_postcheck2(llm_client, person_data, summary, urls, worker_id, person_id)
 
-        await save_postcheck2_result(db, person_id, True)
+        await save_postcheck2_result(db, person_id, is_valid)
 
         logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ PostCheck2 завершен. Валидность: {is_valid}")
 

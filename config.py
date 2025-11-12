@@ -141,7 +141,7 @@ DROP_AND_CREATE_RESULT_TABLE_QUERY = f"""
         null::text AS confidence,
         ARRAY[]::text[] AS urls,
         ARRAY[]::text[] AS photos
-    FROM {source_table_name};
+    FROM {cleaned_table_name};
 """
 STATS_QUERY = f"""
     SELECT

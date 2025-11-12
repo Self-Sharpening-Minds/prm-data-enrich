@@ -152,12 +152,12 @@ async def _run_single_command(args) -> None:
         await clean_and_create_db()
     elif args.tasks:
         await fill_task_queue()
-    elif args.run > 0:
-        await run_workers(args.run)
     elif args.stats:
         await get_pipeline_stats()
     elif args.html:
         await export_to_html()
+    elif args.run > 0:
+        await run_workers(args.run)
     else:
         logger.warning("Не указана команда. Используйте --help для справки.")
 

@@ -91,7 +91,7 @@ async def process_task(db: AsyncDatabaseManager, task: dict, worker_id: int) -> 
     try:
         await run_handler(worker_id, task_type, person_id)
         await mark_task_status(db, task_id, True)
-        logger.info(f"[Воркер #{worker_id}] ✅ Задача {task_type} завершена успешно")
+        logger.info(f"[Воркер #{worker_id}][person_id={person_id}] ✅ Задача {task_type} завершена успешно")
     except Exception as e:
         logger.exception(f"[Воркер #{worker_id}] ❌ Ошибка при выполнении {task_type}: {e}")
         await mark_task_status(db, task_id, False, str(e))

@@ -207,7 +207,7 @@ class PerplexityClient(BaseLLMClient):
         prompt: str,
         model: str | None = None,
         response_format: str = "text",
-        temperature: float = 0.2,
+        temperature: float = 0.8,
     ) -> Any:
         """(async) ask_perplexity"""
         model_to_use = model or self.config.perplexity_model
