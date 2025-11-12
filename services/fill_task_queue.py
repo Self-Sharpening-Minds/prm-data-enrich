@@ -42,12 +42,12 @@ async def fill_task_queue() -> None:
                 FROM {config.result_table_name} AS p
                 WHERE {condition}
                   AND (p.{done_flag} IS NULL OR p.{done_flag} = FALSE)
-                  AND NOT EXISTS (
-                      SELECT 1 FROM task_queue tq
-                      WHERE tq.person_id = p.person_id
-                        AND tq.task_type = '{task_type}'
-                  );
             """
+            # AND NOT EXISTS (
+            #           SELECT 1 FROM task_queue tq
+            #           WHERE tq.person_id = p.person_id
+            #             AND tq.task_type = '{task_type}'
+            #       );
 
             await db.execute(insert_query)
             # TODO: logger.info(f"Добавлены новые задачи типа '{task_type}': {количество}")

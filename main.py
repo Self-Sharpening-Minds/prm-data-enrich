@@ -5,6 +5,7 @@ import logging
 import mimetypes
 from pathlib import Path
 from typing import Any
+import json
 
 import config
 from jinja2 import Environment, FileSystemLoader
@@ -97,6 +98,39 @@ async def get_pipeline_stats() -> dict[str, Any]:
     return stats
 
 
+async def export_to_json():
+    db = AsyncDatabaseManager()
+    await db.connect()
+    try:
+        query = """SELECT * FROM public.person_result_data WHERE done = TRUE;"""
+        persons = await db.fetch(query)
+                
+        for person in persons:
+            person['fetch_date'] = str(person.get('fetch_date', ''))
+            original_summary = person.get('summary', '')
+            person['summary'] = cleaner.clean_summary(original_summary)
+            person_facts = []
+            person_summary = ''
+
+            if original_summary:
+                for fact in original_summary[original_summary.find("[")+1:original_summary.find("]")].strip().split("\","):
+                    person_facts.append(fact.replace("\"", "").strip())
+                person_summary = original_summary[original_summary.find("summary") + 10:-2].strip()
+                    
+            person['summary'] = person_summary
+            person['new_facts'] = person_facts
+        
+        with open('persons_export.json', 'w', encoding='utf-8') as f:
+            json.dump(persons, f, ensure_ascii=False, indent=2)
+        
+        logger.info(f"✅ Экспортировано {len(persons)} записей в persons_export.json")
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка при экспорте: {e}")
+    finally:
+        await db.close()
+
+
 async def export_to_html() -> None:
     """Экспортирует результаты из БД в HTML-файл."""
     logger.info("Экспорт результатов в HTML...")
@@ -156,6 +190,8 @@ async def _run_single_command(args) -> None:
         await get_pipeline_stats()
     elif args.html:
         await export_to_html()
+    elif args.json:
+        await export_to_json()
     elif args.run > 0:
         await run_workers(args.run)
     else:
@@ -170,6 +206,7 @@ async def main():
     parser.add_argument("--run", type=int, nargs='?', const=4, default=config.ASYNC_WORKERS, help="Запустить указанное количество воркеров")
     parser.add_argument("--stats", action="store_true", help="Показать статистику по флагам")
     parser.add_argument("--html", action="store_true", help="Экспортировать результаты в HTML")
+    parser.add_argument("--json", action="store_true", help="Экспортировать результаты в JSON")
 
     args = parser.parse_args()
     await _run_single_command(args)

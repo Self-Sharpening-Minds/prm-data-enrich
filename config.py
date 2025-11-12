@@ -53,7 +53,7 @@ PATH_PRM_MEDIA = 'prm_media/'
 PATH_PERSON_TG_AVATARS = 'telegram/avatars/'
 
 MAX_RETRIES = 3
-ASYNC_WORKERS = 1
+ASYNC_WORKERS = 5
 
 # ----- sql_queries -----
 SELECT_PERSONS_BASE_QUERY = f"SELECT * FROM {result_table_name}"
@@ -171,3 +171,4 @@ TAKE_TASK_IN_PROGRESS_QUERY = """
     )
     RETURNING id, person_id, task_type;
 """
+# and task_type like 'llm' 'perp' 'postcheck1' 'postcheck2'
