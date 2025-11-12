@@ -34,8 +34,6 @@ source_table_name = "person_source_data"
 cleaned_table_name = "cleaned_person_source_data"
 result_table_name = "person_result_data"
 
-CHUNK_SIZE = 10
-
 EMOJI_PATTERN = re.compile(r"["
     r"\U0001F600-\U0001F64F"  # эмотиконы
     r"\U0001F300-\U0001F5FF"  # символы и пиктограммы
@@ -48,7 +46,6 @@ URL_PATTERN = re.compile(r'https?://\S+|t\.me/\S+|@[\w_]+')
 ENRU_CHARS_PATTERN = re.compile(r'[^A-Za-zА-Яа-яЁё\s-]+')
 
 IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png"]
-
 MIN_PHOTOS_IN_CLUSTER = 2
 
 PATH_PROMPTS = 'prompts/'
@@ -56,7 +53,7 @@ PATH_PRM_MEDIA = 'prm_media/'
 PATH_PERSON_TG_AVATARS = 'telegram/avatars/'
 
 MAX_RETRIES = 3
-ASYNC_WORKERS = 4
+ASYNC_WORKERS = 1
 
 # ----- sql_queries -----
 SELECT_PERSONS_BASE_QUERY = f"SELECT * FROM {result_table_name}"

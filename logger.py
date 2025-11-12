@@ -1,6 +1,6 @@
 import logging
-import sys
 import os
+import sys
 from datetime import datetime
 
 
@@ -33,6 +33,3 @@ def setup_logging(log_dir: str = "logs"):
 
     logger.info(f"✅ Логирование инициализировано. Логи пишутся в: {log_file}")
     return logger
-
-
-setup_logging()
