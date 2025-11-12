@@ -13,7 +13,6 @@ from utils import cleaner
 from utils.db import AsyncDatabaseManager
 from utils.task_worker import worker_loop
 
-setup_logging(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 import config
@@ -49,7 +48,6 @@ async def process_single_person(llm: LlmClient, db: AsyncDatabaseManager, person
                     f"[Воркер #{worker_id}][person_id={person_id}] ❌ LLM вернула некорректный результат."
                     f"Попытка {attempt + 1}/{config.MAX_RETRIES}. Тип: {type(parsed_result)}"
                 )
-                await asyncio.sleep(0.5)
                 continue
 
             first_name = parsed_result.get('meaningful_first_name')
@@ -71,7 +69,6 @@ async def process_single_person(llm: LlmClient, db: AsyncDatabaseManager, person
             f"[Воркер #{worker_id}][person_id={person_id}] ❌ Ошибка при обработке LLM на попытке {attempt + 1}: {e}",
             exc_info=True
         )
-        await asyncio.sleep(0.5)
 
     logger.error(f"[Воркер #{worker_id}][person_id={person_id}] ❌ Не удалось обработать после {config.MAX_RETRIES} попыток")
     return False
