@@ -54,6 +54,10 @@ async def run(worker_id: int, person_id: int):
         logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ Perplexity поиск завершен")
 
     except Exception as e:
+        await db.execute(
+            f"UPDATE {config.result_table_name} SET flag_perp = FALSE WHERE person_id = $1",
+            person_id
+        )
         logger.exception(f"[Воркер #{worker_id}][person_id={person_id}] ❌ Ошибка в Perplexity handler: {e}")
         raise
     finally:

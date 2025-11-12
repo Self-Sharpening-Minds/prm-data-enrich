@@ -114,7 +114,7 @@ async def run_workers(count: int) -> None:
     db = AsyncDatabaseManager()
     await db.connect()
 
-    await fill_task_queue()
+    await fill_task_queue() #TODO
     await asyncio.sleep(2)
 
     if count <= 0:

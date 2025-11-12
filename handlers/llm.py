@@ -99,6 +99,10 @@ async def run(worker_id: int, person_id: int) -> None:
             raise Exception(f"Не удалось обработать person_id {person_id} через LLM после {config.MAX_RETRIES} попыток")
 
     except Exception as e:
+        await db.execute(
+            f"UPDATE {config.result_table_name} SET flag_llm = FALSE WHERE person_id = $1",
+            person_id
+        )
         logger.exception(f"[Воркер #{worker_id}][person_id={person_id}] ❌ Ошибка в LLM handler: {e}")
         raise
     finally:

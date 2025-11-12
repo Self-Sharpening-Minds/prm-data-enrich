@@ -62,6 +62,10 @@ async def run(worker_id: int, person_id: int) -> None:
         logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ prellm завершен успешно")
 
     except Exception as e:
+        await db.execute(
+            f"UPDATE {config.result_table_name} SET flag_prellm = FALSE WHERE person_id = $1",
+            person_id
+        )
         logger.exception(f"[Воркер #{worker_id}][person_id={person_id}] ❌ Ошибка: {e}")
         raise
     finally:
