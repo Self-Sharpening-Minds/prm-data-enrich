@@ -141,8 +141,9 @@ DROP_AND_CREATE_RESULT_TABLE_QUERY = f"""
         null::text AS confidence,
         ARRAY[]::text[] AS urls,
         ARRAY[]::text[] AS photos
-    FROM {cleaned_table_name};
-"""
+    FROM {cleaned_table_name}
+    WHERE person_id = 3578 or person_id = 1537
+""" #TODO: убрать Where person_id = 3578 or person_id = 1537
 STATS_QUERY = f"""
     SELECT
         COUNT(*) AS total_persons,
@@ -159,7 +160,7 @@ SELECT_DONE_QUERY = f"""
     WHERE done = TRUE
     ORDER BY person_id;
 """
-TAKE_TASK_IN_PROGRESS_QUERY = """
+TAKE_PENDING_TASK_QUERY = """
     UPDATE task_queue
     SET status = 'in_progress', started_at = NOW()
     WHERE id = (

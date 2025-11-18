@@ -69,7 +69,7 @@ async def perform_perplexity_search(perp_client: PerplexityClient, person_data: 
     )
 
 
-async def run(worker_id: int, person_id: int) -> None:
+async def run(worker_id: int, person_id: int) -> bool:
     """
     Основной обработчик Perplexity для одного человека.
 
@@ -84,7 +84,7 @@ async def run(worker_id: int, person_id: int) -> None:
     try:
         person_data = await fetch_person_data(db, person_id)
         if not person_data:
-            return
+            return False
 
         search_result = await perform_perplexity_search(perp_client, person_data, worker_id)
 
@@ -93,8 +93,8 @@ async def run(worker_id: int, person_id: int) -> None:
         confidence = search_result.get("confidence", "low")
 
         await save_perplexity_result(db, person_id, summary, urls, confidence)
-
         logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ Perplexity поиск завершен успешно")
+        return True
 
     except Exception as e:
         await db.execute(f"UPDATE {config.result_table_name} SET flag_perp = FALSE WHERE person_id = $1", person_id)

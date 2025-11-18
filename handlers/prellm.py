@@ -39,8 +39,9 @@ def normalize_person_fields(person: dict) -> None:
         person: Словарь с данными персоны.
     """
     fields_to_normalize = [
-        'person_id', 'first_name', 'last_name',
-        'about', 'personal_channel_title', 'personal_channel_about'
+        'first_name', 'last_name',
+        'about', 'personal_channel_title',
+        'personal_channel_about'
     ]
     for field in fields_to_normalize:
         person[field] = cleaner.normalize_empty(person.get(field))
@@ -74,7 +75,7 @@ def extract_meaningful_data(person: dict) -> tuple[str | None, str | None, str |
     logger.debug(
         f"[person_id={person.get('person_id')}] "
         f"first_name={first_name}, last_name={last_name}, "
-        f"about_clean={'set' if about_clean else 'None'}, links_count={len(extracted_links)}"
+        f"about_clean={'Есть' if about_clean else 'None'}, links_count={len(extracted_links)}"
     )
     return first_name, last_name, about_clean, extracted_links
 
@@ -103,10 +104,10 @@ async def update_meaningful_fields(
         f"UPDATE {config.result_table_name} SET flag_prellm = TRUE WHERE person_id = $1",
         person_id
     )
-    logger.debug(f"[person_id={person_id}] Поля meaningful обновлены и flag_prellm установлен")
+    # logger.debug(f"[person_id={person_id}] Поля meaningful обновлены и flag_prellm установлен")
 
 
-async def run(worker_id: int, person_id: int) -> None:
+async def run(worker_id: int, person_id: int) -> bool:
     """
     Асинхронная предварительная очистка данных перед обработкой LLM.
 
@@ -114,7 +115,7 @@ async def run(worker_id: int, person_id: int) -> None:
         worker_id: ID воркера для логирования.
         person_id: ID персоны для обработки.
     """
-    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ▶️ Начинаем prellm")
+    # logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] Начинаем prellm")
 
     db = AsyncDatabaseManager()
     await db.connect()
@@ -122,13 +123,13 @@ async def run(worker_id: int, person_id: int) -> None:
     try:
         person = await fetch_person(db, person_id)
         if not person:
-            return
+            return False
 
         normalize_person_fields(person)
         first_name, last_name, about_clean, extracted_links = extract_meaningful_data(person)
         await update_meaningful_fields(db, person_id, first_name, last_name, about_clean, extracted_links)
-
-        logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ prellm завершен успешно")
+        return True
+        # logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ prellm завершен успешно")
 
     except Exception as e:
         logger.exception(f"[Воркер #{worker_id}][person_id={person_id}] ❌ Ошибка prellm: {e}")

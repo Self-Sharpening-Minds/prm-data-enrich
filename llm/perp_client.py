@@ -207,16 +207,28 @@ class PerplexityClient(BaseLLMClient):
         prompt: str,
         model: str | None = None,
         response_format: str = "text",
-        temperature: float = 0.8,
+        temperature: float = 0.2,
+        use_osint_preset: bool = True,
     ) -> Any:
         """(async) ask_perplexity"""
         model_to_use = model or self.config.perplexity_model
+
+        # --- OSINT preset ---
+        extra_body = {}
+        if use_osint_preset:
+            extra_body.update({
+                "top_p": 0.9,
+                "presence_penalty": 0.3,
+                "frequency_penalty": 0.2,
+                "max_tokens": 3000,
+            })
 
         result, completion = await self._async_request_llm(
             prompt=prompt,
             model=model_to_use,
             response_format=response_format,
             temperature=temperature,
+            extra_body=extra_body,
         )
 
         if response_format == "json_object":

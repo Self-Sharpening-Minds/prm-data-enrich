@@ -20,8 +20,8 @@ def normalize_empty(value: str | None) -> str | None:
         return None
     if isinstance(value, str):
         val = value.strip()
-        if not val:
-            logger.debug("normalize_empty: строка пуста → None")
+        # if not val:
+            # logger.debug("normalize_empty: строка пуста → None")
         return val or None
     logger.debug(f"normalize_empty: пропущено значение не типа str ({type(value)})")
     return value
@@ -51,11 +51,10 @@ def _clean_common(value: str, remove_non_enru: bool = False, keep_symbols: bool 
     if not keep_symbols:
         value = re.sub(r'[|/\\\[\]{}(),*+=<>^~"]+', ' ', value)
 
-    # Убираем zero-width символы
     value = re.sub(r'[\u200b\u200c\u200d\uFEFF]', '', value)
     value = re.sub(r'\s{2,}', ' ', value).strip()
 
-    logger.debug(f"_clean_common: '{original_value}' → '{value}'")
+    # logger.debug(f"_clean_common: '{original_value}' → '{value}'")
 
     return value if len(value) >= 2 else None
 
@@ -85,11 +84,11 @@ def extract_links(*fields: str | None) -> list[str]:
         if field and isinstance(field, str):
             matches = URL_PATTERN.findall(field)
             if matches:
-                logger.debug(f"extract_links: найдено {len(matches)} ссылок в '{field[:30]}...'")
+                # logger.debug(f"extract_links: найдено {len(matches)} ссылок в '{field[:30]}...'")
                 found_items.extend(matches)
-    # Удаляем дубликаты, сохраняя порядок
+    
     unique_links = list(dict.fromkeys(found_items))
-    logger.debug(f"extract_links: итого {len(unique_links)} уникальных ссылок")
+    logger.debug(f"Извлечено {len(unique_links)} уникальных ссылок")
     return unique_links
 
 
@@ -115,7 +114,7 @@ def clean_summary(text: str) -> str:
     original_text = text
     cleaned = re.sub(r'\s*\[\d+\]\s*', ' ', text)
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
-    logger.debug(f"clean_summary: '{original_text[:30]}...' → '{cleaned[:30]}...'")
+    # logger.debug(f"clean_summary: '{original_text[:30]}...' → '{cleaned[:30]}...'")
     return cleaned
 
 
@@ -139,5 +138,5 @@ def merge_about_fields(*fields: str | None) -> str | None:
             unique_texts.append(cleaned)
 
     result = ' | '.join(unique_texts) if unique_texts else None
-    logger.debug(f"merge_about_fields: результат → '{result}'")
+    # logger.debug(f"merge_about_fields: результат → '{result}'")
     return result

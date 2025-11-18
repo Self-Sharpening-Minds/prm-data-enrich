@@ -105,7 +105,7 @@ class LlmClient(BaseLLMClient):
     # --- Асинхронные методы ---
     async def async_ask_llm(self, prompt: str,
                 response_format: str = "json_object",
-                temperature: float = 0.0
+                temperature: float = 0.3
         ) -> Any:
         """(async) async_ask_llm."""
         result, _raw = await self._async_request_llm(

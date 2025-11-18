@@ -108,7 +108,7 @@ async def process_single_person(
     Returns:
         bool: True, если успешно, False иначе.
     """
-    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ▶️ Начало LLM обработки")
+    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] Начало LLM обработки")
 
     person_data = await fetch_person_data(db, person_id)
     if not person_data:
@@ -125,7 +125,7 @@ async def process_single_person(
     return await attempt_llm_parse(llm, llm_input, db, person_id, worker_id)
 
 
-async def run(worker_id: int, person_id: int) -> None:
+async def run(worker_id: int, person_id: int) -> bool:
     """
     Основной обработчик LLM для одного человека.
 
@@ -133,7 +133,7 @@ async def run(worker_id: int, person_id: int) -> None:
         worker_id: ID воркера.
         person_id: ID человека.
     """
-    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ▶️ Запуск LLM handler")
+    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] Запуск LLM handler")
 
     db = AsyncDatabaseManager()
     await db.connect()
@@ -146,6 +146,7 @@ async def run(worker_id: int, person_id: int) -> None:
         if success:
             await db.execute(flag_query, True, person_id)
             logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ LLM завершен успешно")
+            return True
         else:
             await db.execute(flag_query, False, person_id)
             logger.error(f"[Воркер #{worker_id}][person_id={person_id}] ❌ LLM завершен с ошибкой")

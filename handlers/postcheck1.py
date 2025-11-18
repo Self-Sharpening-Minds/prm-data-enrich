@@ -62,11 +62,11 @@ async def perform_postcheck1(llm_client: LlmClient, summary: str, worker_id: int
     Returns:
         bool: True, если summary валиден, False — если нет.
     """
-    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ▶️ Запуск проверки PostCheck1")
+    logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] Запуск проверки PostCheck1")
     return await llm_client.async_postcheck(summary)
 
 
-async def run(worker_id: int, person_id: int) -> None:
+async def run(worker_id: int, person_id: int) -> bool:
     """
     Основной обработчик PostCheck1 для одного человека.
 
@@ -83,14 +83,14 @@ async def run(worker_id: int, person_id: int) -> None:
     try:
         person_data = await fetch_person_for_postcheck1(db, person_id)
         if not person_data:
-            return
+            return False
 
         summary = person_data.get("summary", "")
         is_valid = await perform_postcheck1(llm_client, summary, worker_id, person_id)
 
         await save_postcheck1_result(db, person_id, is_valid)
-
         logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ PostCheck1 завершен. Валидность: {is_valid}")
+        return is_valid
 
     except Exception as e:
         await save_postcheck1_result(db, person_id, False)

@@ -10,7 +10,7 @@ from typing import Any
 import config
 from jinja2 import Environment, FileSystemLoader
 from logger import setup_logging
-from services.fill_task_queue import fill_task_queue
+from services.fill_task_queue import TaskQueue
 from utils import cleaner
 from utils.db import AsyncDatabaseManager
 from utils.task_worker import worker_loop
@@ -61,7 +61,7 @@ def _process_person_photos(photo_sources: list[str]) -> tuple[list[str], list[st
 
 async def clean_and_create_db() -> None:
     """Очищает и пересоздаёт основные таблицы проекта."""
-    logger.info("🔄 Подготовка базы данных...")
+    logger.info("🔄 Подготовка баз данных...")
     db = await _get_db()
     try:
         for query in (
@@ -165,7 +165,8 @@ async def export_to_html() -> None:
 async def run_workers(count: int) -> None:
     """Запускает указанное количество асинхронных воркеров."""
     db = await _get_db()
-    await fill_task_queue()
+    queue = TaskQueue()
+    await queue.fill_all()
     await asyncio.sleep(2)
 
     worker_count = count or config.ASYNC_WORKERS
@@ -185,12 +186,18 @@ async def _run_single_command(args) -> None:
     if args.dbcreate:
         await clean_and_create_db()
     elif args.tasks:
-        await fill_task_queue()
+        queue = TaskQueue()
+        await queue.fill_all()
     elif args.stats:
         await get_pipeline_stats()
     elif args.html:
         await export_to_html()
     elif args.json:
+        await export_to_json()
+    elif args.qt:
+        await clean_and_create_db()
+        await run_workers(2)
+        await export_to_html()
         await export_to_json()
     elif args.run > 0:
         await run_workers(args.run)
@@ -207,6 +214,7 @@ async def main():
     parser.add_argument("--stats", action="store_true", help="Показать статистику по флагам")
     parser.add_argument("--html", action="store_true", help="Экспортировать результаты в HTML")
     parser.add_argument("--json", action="store_true", help="Экспортировать результаты в JSON")
+    parser.add_argument("--qt", action="store_true", help="Быстрый тест (для отладки)")
 
     args = parser.parse_args()
     await _run_single_command(args)
