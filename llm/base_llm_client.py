@@ -41,18 +41,6 @@ class BaseLLMClient:
             )
         return self._client
 
-    def _parse_json(self, raw: str | None) -> dict[str, Any]:
-        if not raw:
-            return {}
-
-        try:
-            parsed = json.loads(raw)
-            return parsed if isinstance(parsed, dict) else {"result": parsed}
-
-        except Exception as exc:
-            self.logger.warning("Ошибка JSON", exc_info=exc, extra={"raw": raw})
-            return {}
-
     async def request(
         self,
         prompt: str,
@@ -79,7 +67,6 @@ class BaseLLMClient:
             msg = completion.choices[0].message
             raw_text = msg.content if msg else None
             data_json = self._parse_json(raw_text) if response_format == {"type": "json_object"} else None
-
             return LlmResponse(
                 text=raw_text,
                 json=data_json,
@@ -89,10 +76,18 @@ class BaseLLMClient:
 
         except Exception as exc:
             self.logger.error("Ошибка LLM запроса", exc_info=exc)
-
             return LlmResponse(
                 text=None,
                 json={} if response_format == {"type": "json_object"} else None,
                 raw=None,
                 usage=None,
             )
+
+    def _parse_json(self, raw: str | None) -> dict[str, Any]:
+        if not raw: return {}
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else {"result": parsed}
+        except Exception as exc:
+            self.logger.warning("Ошибка JSON", exc_info=exc, extra={"raw": raw})
+            return {}

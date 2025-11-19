@@ -1,22 +1,14 @@
 from typing import Any
 
 from config import LlmConfig
-from llm.base_llm_client import BaseLLMClient
+from llm.base_llm_client import BaseLLMClient, LlmResponse
 
 
 class PerplexityClient(BaseLLMClient):
     """Клиент для работы с Perplexity моделями."""
 
     def __init__(self, config: LlmConfig | None = None) -> None:
-        """Инициализация клиента Perplexity.
-        Args:
-            config: Конфигурация LLM. Если не указана, используется по умолчанию.
-        """
         super().__init__(config=config)
-        self.logger.debug(
-            "PerplexityClient инициализирован",
-            extra={"perplexity_model": self.config.model.get("perplexity")}
-        )
 
     async def search_info(
         self,
@@ -25,15 +17,15 @@ class PerplexityClient(BaseLLMClient):
         """Ищет информацию о человеке через Perplexity."""
         pieces = self._build_search_pieces(person_data)
         prompt = self.prompts.render("perp_search", pieces=pieces)
-        resp = await self.request(
+        response: LlmResponse = await self.request(
             prompt=prompt,
             model=self.config.model["perplexity"],
             response_format={"type": "text"},
             temperature=0.3,
             extra_body=self._build_osint_params(),
         )
-        summary = (resp.text or "").strip() or None
-        urls = self._extract_urls_from_response(resp.raw)
+        summary = (response.text or "").strip() or None
+        urls = self._extract_urls_from_response(response.raw)
         return {"summary": summary, "urls": urls}
 
     @staticmethod

@@ -5,23 +5,17 @@ from llm.base_llm_client import BaseLLMClient, LlmResponse
 
 
 class LlmClient(BaseLLMClient):
-    """Клиент для обычных LLM-вызовов.
-    Использует модели согласно конфигурации.
-    """
+    """Клиент для обычных LLM-вызовов."""
 
     def __init__(self, config: LlmConfig | None = None) -> None:
         super().__init__(config=config)
-        self.logger.debug(
-            "LlmClient инициализирован",
-            extra={"default_model": self.config.model["default"]}
-        )
 
     async def ask_json(
         self,
         prompt: str,
         *,
         model: str | None = None,
-        temperature: float = 0.0 # TODO: какая температура лучше для задач? = None
+        temperature: float | None = None
     ) -> dict[str, Any]:
         """Удобный метод получения JSON от модели."""
         response: LlmResponse = await self.request(
@@ -30,15 +24,14 @@ class LlmClient(BaseLLMClient):
             response_format={"type": "json_object"},
             temperature=temperature,
         )
-
         return response.json or {}
 
     async def async_parse_single_to_meaningful(self, person_data: dict) -> dict:
         """
         Обрабатывает данные одного человека через LLM.
         """
-        prompt = self.prompts.render("parse_chunk", chunk_json=person_data)
-        return await self.ask_json(prompt, model=self.config.model["default"])
+        prompt = self.prompts.render("parse_single", person_data=person_data)
+        return await self.ask_json(prompt, model=self.config.model["default"], temperature=0.0)
 
     async def async_postcheck(self, text: str) -> bool:
         """Проверка результата моделью check."""
@@ -46,7 +39,7 @@ class LlmClient(BaseLLMClient):
         if not prompt:
             return False
 
-        response = await self.ask_json(prompt, model=self.config.model["check"])
+        response = await self.ask_json(prompt, model=self.config.model["check"], temperature=0.0)
         return bool(response.get("is_valid"))
 
     async def async_postcheck2(self, person: dict, summary: str, urls) -> bool:
@@ -68,5 +61,5 @@ class LlmClient(BaseLLMClient):
         if not prompt:
             return False
 
-        response = await self.ask_json(prompt, model=self.config.model["check"])
+        response = await self.ask_json(prompt, model=self.config.model["check"], temperature=0.0)
         return bool(response.get("is_valid"))
