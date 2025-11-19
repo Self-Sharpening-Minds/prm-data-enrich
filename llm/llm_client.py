@@ -105,7 +105,7 @@ class LlmClient(BaseLLMClient):
     # --- Асинхронные методы ---
     async def async_ask_llm(self, prompt: str,
                 response_format: str = "json_object",
-                temperature: float = 0.0
+                temperature: float = 0.3
         ) -> Any:
         """(async) async_ask_llm."""
         result, _raw = await self._async_request_llm(
@@ -142,6 +142,24 @@ class LlmClient(BaseLLMClient):
             return {}
         return response
 
+    async def async_parse_single_to_meaningful(self, person_data: dict) -> dict:
+        """
+        Обрабатывает данные одного человека через LLM.
+        Args:
+            person_data: Словарь с данными одного человека
+        Returns:
+            Словарь с обработанными данными
+        """
+        prompt = self._render_prompt(
+            "parse_chunk",
+            chunk_json=person_data
+        )
+        response = await self.async_ask_llm(prompt, response_format="json_object")
+        if not isinstance(response, dict):
+            self.logger.warning("Ожидался словарь, но получен другой тип; возвращаем {}.")
+            return {}
+        return response
+
     async def async_postcheck(self, text: str) -> bool:
         """(async) postcheck"""
         prompt = self._render_prompt("postcheck", text=text)
@@ -160,7 +178,7 @@ class LlmClient(BaseLLMClient):
             return False
 
         return response.get("is_valid", False)
-    
+
     async def async_postcheck2(self, person: dict, summary: str, urls) -> bool:
         """(async) postcheck2"""
         pieces = [

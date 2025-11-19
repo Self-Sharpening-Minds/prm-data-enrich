@@ -185,9 +185,7 @@ class BaseLLMClient:
             if max_tokens:
                 body["max_tokens"] = max_tokens
 
-            rf = {"type": response_format} if response_format == "json_object" else None
-
-            self.logger.debug("Асинхронный вызов OpenAI.chat.completions.create")
+            rf = {"type": response_format} if response_format == "json_object" else None #TODO:
 
             completion = await self.async_client.chat.completions.create(
                 model=model,
