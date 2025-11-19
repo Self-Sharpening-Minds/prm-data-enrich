@@ -1,6 +1,7 @@
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -25,9 +26,19 @@ class LlmConfig:
     key: str | None = os.getenv("OPENROUTER_API_KEY")
     url: str = os.getenv("LLM_URL", "https://openrouter.ai/api/v1")
     # "qwen/qwen3-14b" "mistralai/ministral-8b" "z-ai/glm-4.5-air" "x-ai/grok-4-fast"
-    default_model: str = os.getenv("LLM_DEFAULT_MODEL", "x-ai/grok-4-fast")
-    check_model: str = os.getenv("LLM_CHECK_MODEL", "mistralai/ministral-8b")
-    perplexity_model: str = os.getenv("LLM_PERPLEXITY_MODEL", "perplexity/sonar")
+    model: dict[str, str] = field(default_factory=lambda: {
+        "default": os.getenv("LLM_DEFAULT_MODEL", "x-ai/grok-4-fast"),
+        "check": os.getenv("LLM_CHECK_MODEL", "mistralai/ministral-8b"),
+        "perplexity": os.getenv("LLM_PERPLEXITY_MODEL", "perplexity/sonar")
+    })
+
+
+@dataclass
+class LlmResponse:
+    text: str | None
+    json: dict[str, Any] | None
+    raw: Any
+    usage: dict | None
 
 
 source_table_name = "person_source_data"
@@ -55,7 +66,7 @@ PATH_PERSON_TG_AVATARS = 'telegram/avatars/'
 MAX_RETRIES = 3
 ASYNC_WORKERS = 5
 
-TASK_TYPES = ["prellm", "llm", "perp", "postcheck1", "postcheck2"] #TODO: "photos"
+TASK_TYPES = ["prellm", "llm", "perp", "postcheck1", "postcheck2"]  # TODO: "photos"
 
 TASK_RULES = {
     "prellm": "TRUE",
@@ -63,7 +74,7 @@ TASK_RULES = {
     "perp": "valid = TRUE",
     "postcheck1": "flag_perp = TRUE",
     "postcheck2": "flag_postcheck1 = TRUE"
-    #"photos": "done = TRUE"
+    # "photos": "done = TRUE"
 }
 
 TASK_FLAGS = {
@@ -72,7 +83,7 @@ TASK_FLAGS = {
     "perp": "flag_perp",
     "postcheck1": "flag_postcheck1",
     "postcheck2": "flag_postcheck2"
-    #"photos": "flag_photos"
+    # "photos": "flag_photos"
 }
 
 NEXT_TASK = {
@@ -80,8 +91,8 @@ NEXT_TASK = {
     "llm": "perp",
     "perp": "postcheck1",
     "postcheck1": "postcheck2",
-    "postcheck2": None, #"postcheck2": "photos",
-    #"photos": None
+    "postcheck2": None,  # "postcheck2": "photos",
+    # "photos": None
 }
 
 # ----- sql_queries -----
@@ -171,7 +182,7 @@ DROP_AND_CREATE_RESULT_TABLE_QUERY = f"""
         ARRAY[]::text[] AS urls,
         ARRAY[]::text[] AS photos
     FROM {cleaned_table_name}
-""" #TODO: убрать Where person_id = 3578 or person_id = 1537
+"""  # TODO: убрать Where person_id = 3578 or person_id = 1537
 STATS_QUERY = f"""
     SELECT
         COUNT(*) AS total_persons,
