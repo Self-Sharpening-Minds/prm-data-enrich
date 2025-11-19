@@ -55,6 +55,35 @@ PATH_PERSON_TG_AVATARS = 'telegram/avatars/'
 MAX_RETRIES = 3
 ASYNC_WORKERS = 5
 
+TASK_TYPES = ["prellm", "llm", "perp", "postcheck1", "postcheck2"] #TODO: "photos"
+
+TASK_RULES = {
+    "prellm": "TRUE",
+    "llm": "flag_prellm = TRUE",
+    "perp": "valid = TRUE",
+    "postcheck1": "flag_perp = TRUE",
+    "postcheck2": "flag_postcheck1 = TRUE"
+    #"photos": "done = TRUE"
+}
+
+TASK_FLAGS = {
+    "prellm": "flag_prellm",
+    "llm": "flag_llm",
+    "perp": "flag_perp",
+    "postcheck1": "flag_postcheck1",
+    "postcheck2": "flag_postcheck2"
+    #"photos": "flag_photos"
+}
+
+NEXT_TASK = {
+    "prellm": "llm",
+    "llm": "perp",
+    "perp": "postcheck1",
+    "postcheck1": "postcheck2",
+    "postcheck2": None, #"postcheck2": "photos",
+    #"photos": None
+}
+
 # ----- sql_queries -----
 SELECT_PERSONS_BASE_QUERY = f"SELECT * FROM {result_table_name}"
 UPDATE_MEANINGFUL_FIELDS_QUERY = f"""
@@ -142,7 +171,6 @@ DROP_AND_CREATE_RESULT_TABLE_QUERY = f"""
         ARRAY[]::text[] AS urls,
         ARRAY[]::text[] AS photos
     FROM {cleaned_table_name}
-    WHERE person_id = 3578 or person_id = 1537
 """ #TODO: убрать Where person_id = 3578 or person_id = 1537
 STATS_QUERY = f"""
     SELECT

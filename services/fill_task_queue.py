@@ -5,26 +5,6 @@ from utils.db import AsyncDatabaseManager
 
 logger = logging.getLogger(__name__)
 
-TASK_TYPES = ["prellm", "llm", "perp", "postcheck1", "postcheck2"] #TODO: "photos"
-
-TASK_RULES = {
-    "prellm": "TRUE",
-    "llm": "flag_prellm = TRUE",
-    "perp": "valid = TRUE",
-    "postcheck1": "flag_perp = TRUE",
-    "postcheck2": "flag_postcheck1 = TRUE"
-    #"photos": "done = TRUE"
-}
-
-TASK_FLAGS = {
-    "prellm": "flag_prellm",
-    "llm": "flag_llm",
-    "perp": "flag_perp",
-    "postcheck1": "flag_postcheck1",
-    "postcheck2": "flag_postcheck2"
-    #"photos": "flag_photos"
-}
-
 
 class TaskQueue:
     """
@@ -51,7 +31,7 @@ class TaskQueue:
             person_id: ID персоны
             task_type: тип задачи
         """
-        condition = TASK_RULES[task_type]
+        condition = config.TASK_RULES[task_type]
 
         query = f"""
             INSERT INTO task_queue (person_id, task_type, status)
@@ -75,8 +55,8 @@ class TaskQueue:
         Args:
             task_type: тип задачи
         """
-        condition = TASK_RULES[task_type]
-        done_flag = TASK_FLAGS[task_type]
+        condition = config.TASK_RULES[task_type]
+        done_flag = config.TASK_FLAGS[task_type]
 
         logger.debug(f"Bulk insert задач типа '{task_type}' с условием: {condition}")
 
@@ -123,7 +103,7 @@ class TaskQueue:
         try:
             logger.info("Обновляем всю очередь задач...")
 
-            for task_type in TASK_TYPES:
+            for task_type in config.TASK_TYPES:
                 logger.debug(f"Обрабатываем задания типа '{task_type}'...")
                 await self._insert_tasks_bulk(task_type)
 
@@ -139,7 +119,7 @@ class TaskQueue:
             person_id: ID персоны
             task_type: тип задачи (prellm, llm, perp и т.д.)
         """
-        if task_type not in TASK_TYPES:
+        if task_type not in config.TASK_TYPES:
             raise ValueError(f"Неизвестный тип задачи: {task_type}")
 
         await self.connect()

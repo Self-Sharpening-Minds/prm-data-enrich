@@ -17,15 +17,6 @@ HANDLERS = {
     # "photos": photos.run
 }
 
-NEXT_TASK = {
-    "prellm": "llm",
-    "llm": "perp",
-    "perp": "postcheck1",
-    "postcheck1": "postcheck2",
-    "postcheck2": None, #"postcheck2": "photos",
-    #"photos": None
-}
-
 async def fetch_pending_task(db: AsyncDatabaseManager) -> dict | None:
     """
     Извлекает одну задачу из очереди со статусом 'pending',
@@ -49,7 +40,7 @@ async def create_new_task(person_id: int, current_task: str) -> None:
         person_id: ID персоны
         current_task: завершённая задача
     """
-    next_task = NEXT_TASK.get(current_task)
+    next_task = config.NEXT_TASK.get(current_task)
 
     if not next_task:
         logger.debug(f"[person_id={person_id}] Нет следующей задачи после {current_task}")
