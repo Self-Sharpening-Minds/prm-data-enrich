@@ -108,14 +108,3 @@ class BaseLLMClient:
                 raw=None,
                 usage=None,
             )
-
-    async def request_from_template(
-        self,
-        template: str,
-        *,
-        model: str = 'T | None',
-        format: str = "text",
-        **kwargs,
-    ) -> LlmResponse:
-        prompt = self.prompts.render(template, **kwargs)
-        return await self.request(prompt=prompt, model=model, format=format)

@@ -65,13 +65,13 @@ class TaskQueue:
             FROM {config.result_table_name} AS p
             WHERE {condition}
               AND (p.{done_flag} IS NULL OR p.{done_flag} = FALSE)
-              AND 
+              AND
                 NOT EXISTS (
                     SELECT 1 FROM task_queue tq
                     WHERE tq.person_id = p.person_id
                       AND tq.task_type = '{task_type}'
                 )
-        """ #TODO: сделать нормальный подсчет
+        """  # TODO: сделать нормальный подсчет
 
         count_select_result = await self.db.fetch(count_query)
         expected_count = count_select_result[0]['count'] if count_select_result else 0
@@ -90,7 +90,7 @@ class TaskQueue:
                 )
             """
             await self.db.execute(insert_query)
-        
+
         logger.debug(f"Добавление задач типа '{task_type}' завершено. Добавлено задач: {expected_count}")
 
     async def fill_all(self) -> None:

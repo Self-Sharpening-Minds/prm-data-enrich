@@ -24,19 +24,10 @@ class PerplexityClient(BaseLLMClient):
         model: str | None = None,
         temperature: float = 0.2,
         use_osint_preset: bool = True,
-    ) -> Any:
-        """(async) ask_perplexity"""
+    ) -> tuple[str, list[str]]:
+        """Отправляет запрос в Perplexity модель и возвращает текст и список URL."""
         model_to_use = model or self.config.model["perplexity"]
-
-        # --- OSINT preset ---
-        extra_body = {}
-        if use_osint_preset:
-            extra_body = {
-                "top_p": 0.9,
-                "presence_penalty": 0.3,
-                "frequency_penalty": 0.2,
-                "max_tokens": 3000,
-            }
+        extra_body = self._build_osint_params() if use_osint_preset else {}
 
         resp = await self.request(
             prompt=prompt,
@@ -46,47 +37,56 @@ class PerplexityClient(BaseLLMClient):
             extra=extra_body,
         )
 
-        urls = self._extract_urls_from_response(resp.raw)
         text = resp.text or ""
+        urls = self._extract_urls_from_response(resp.raw)
         return text, urls
 
     async def async_search_info(
         self,
-        first_name: str,
-        last_name: str,
-        about: str,
-        extracted_links: list[str],
-        birth_date: str | None = None,
+        person_data: dict
     ) -> dict:
-        """(async) search_info"""
+        """Ищет информацию о человеке через Perplexity."""
+        pieces = self._build_search_pieces(person_data)
+        prompt = self.prompts.render("perp_search", pieces=pieces)
+        text, urls = await self.async_ask_perplexity(prompt)
+        summary = text.strip() or None
+        return {"summary": summary, "urls": urls}
+
+    @staticmethod
+    def _build_osint_params() -> dict:
+        """Создаёт словарь OSINT-настроек запроса."""
+        return {
+            "top_p": 0.9,
+            "presence_penalty": 0.3,
+            "frequency_penalty": 0.2,
+            "max_tokens": 30,
+        }
+
+    def _build_search_pieces(
+        self,
+        person_data: dict
+    ) -> list[str]:
+        """Формирует список строк для шаблона perp_search."""
+        first_name = person_data.get("meaningful_first_name", "")
+        last_name = person_data.get("meaningful_last_name", "")
+        about = person_data.get("meaningful_about", "")
+        extracted_links = person_data.get("extracted_links", [])
+        birth_date = person_data.get("birth_date", '')
+
         pieces = [
             f"- Имя: {first_name}",
             f"- Фамилия: {last_name}",
         ]
-
         if about:
             pieces.append(f"- Доп. информация: {about}")
         if birth_date:
-            pieces.append(f"- Год рождения: {birth_date}")
+            pieces.append(f"- Дата рождения: {birth_date}")
         if extracted_links:
-            pieces.append(f"- Найденные ссылки и профили, особенно обрати внимание на них: {', '.join(extracted_links)}")
-
-        prompt = self.prompts.render("perp_search", pieces=pieces)
-        text, urls = await self.async_ask_perplexity(prompt=prompt)
-        summary = text.strip() or None
-
-        return {
-            "summary": summary,
-            "urls": urls,
-        }
+            pieces.append("- Найденные ссылки: " + ", ".join(extracted_links))
+        return pieces
 
     def _extract_urls_from_response(self, raw_completion: Any | None) -> list[str]:
-        """Извлекает URL-ы из сырого ответа completion.
-        Args:
-            completion_response: Сырой объект ответа от LLM
-        Returns:
-            List[str]: Список извлеченных URL или пустой список при ошибке
-        """
+        """Извлекает URL-ы из сырого ответа completion."""
         urls = []
         if not raw_completion:
             return urls

@@ -3,8 +3,8 @@ import logging
 
 import config
 from handlers import llm, perp, postcheck1, postcheck2, prellm
-from utils.db import AsyncDatabaseManager
 from services.fill_task_queue import TaskQueue
+from utils.db import AsyncDatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ HANDLERS = {
     "postcheck2": postcheck2.run,
     # "photos": photos.run
 }
+
 
 async def fetch_pending_task(db: AsyncDatabaseManager) -> dict | None:
     """
@@ -108,7 +109,7 @@ async def process_task(db: AsyncDatabaseManager, task: dict, worker_id: int) -> 
 
     try:
         status = await run_handler(worker_id, task_type, person_id)
-        await mark_task_status(db, task_id, True) #TODO: сделать нормальные return в handlers
+        await mark_task_status(db, task_id, True)  # TODO: сделать нормальные return в handlers
         if status:
             await create_new_task(person_id, task_type)
         logger.info(f"[Воркер #{worker_id}][person_id={person_id}] ✅ Задача {task_type} завершена успешно")
@@ -133,7 +134,7 @@ async def worker_loop(worker_id: int, db: AsyncDatabaseManager) -> None:
             task = await fetch_pending_task(db)
             if not task:
                 await asyncio.sleep(3)
-                return #TODO: должен быть continue
+                return  # TODO: должен быть continue
 
             await process_task(db, task, worker_id)
         except Exception as e:
