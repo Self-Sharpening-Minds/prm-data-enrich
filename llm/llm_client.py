@@ -1,86 +1,72 @@
 from typing import Any
 
 from config import LlmConfig
-from llm.base_llm_client import BaseLLMClient
+from llm.base_llm_client import BaseLLMClient, LlmResponse
 
 
 class LlmClient(BaseLLMClient):
-    """Конкретный клиент для общих LLM-вызовов.
-    Наследуется от BaseLLMClient и использует модель по умолчанию
-    из конфигурации для обработки запросов к языковым моделям.
-    Attributes:
-        config (LlmConfig): Конфигурация LLM клиента
-        logger: Логгер для записи событий
+    """Клиент для обычных LLM-вызовов.
+    Использует модели согласно конфигурации.
     """
 
     def __init__(self, config: LlmConfig | None = None) -> None:
-        """Инициализация LLM клиента.
-        Args:
-            config: Конфигурация LLM. Если не указана, используется по умолчанию.
-        """
         super().__init__(config=config)
-        self.logger.debug("LlmClient инициализирован",
-                          extra={"default_model": self.config.default_model})
+        self.logger.debug(
+            "LlmClient инициализирован",
+            extra={"default_model": self.config.model["default"]}
+        )
 
-
-    async def async_ask_llm(
+    async def ask_json(
         self,
         prompt: str,
-        response_format: str = "json_object",
+        *,
+        model: str | None = None,
         temperature: float = 0.0
-    ) -> Any:
-        result, _ = await self._async_request_llm(
+    ) -> dict[str, Any]:
+        """Удобный метод получения JSON от модели."""
+        response: LlmResponse = await self.request(
             prompt=prompt,
-            model=self.config.default_model,
-            response_format=response_format,
+            model=model,
+            format="json",
             temperature=temperature,
         )
-        return result
 
+        return response.json or {}
 
     async def async_parse_single_to_meaningful(self, person_data: dict) -> dict:
         """
         Обрабатывает данные одного человека через LLM.
-        Args:
-            person_data: Словарь с данными одного человека
-        Returns:
-            Словарь с обработанными данными
         """
-        prompt = self._render_prompt("parse_chunk", chunk_json=person_data)
-        response = await self.async_ask_llm(prompt, response_format="json_object")
-        return response if isinstance(response, dict) else {}
+        prompt = self.prompts.render("parse_chunk", chunk_json=person_data)
+        return await self.ask_json(prompt, model=self.config.model["default"])
 
     async def async_postcheck(self, text: str) -> bool:
-        """(async) postcheck"""
-        prompt = self._render_prompt("postcheck", text=text)
+        """Проверка результата моделью check."""
+        prompt = self.prompts.render("postcheck", text=text)
         if not prompt:
             return False
 
-        response, _ = await self._async_request_llm(
-            prompt=prompt,
-            model=self.config.check_model,
-            response_format="json_object"
-        )
-
-        return response.get("is_valid", False) if isinstance(response, dict) else False
+        response = await self.ask_json(prompt, model=self.config.model["check"])
+        return bool(response.get("is_valid"))
 
     async def async_postcheck2(self, person: dict, summary: str, urls) -> bool:
-        """(async) postcheck2"""
+        """Расширенная проверка результата моделью check."""
         pieces = [
-            f"- Имя: {person.get("meaningful_first_name", "")}",
-            f"- Фамилия: {person.get("meaningful_last_name", "")}",
-            f"- Доп. информация: {person.get("meaningful_about", "")}",
-            f"- Ссылки, названия, которые стоило проверить: {person.get("extracted_links", [])}"
+            f"- Имя: {person.get('meaningful_first_name', '')}",
+            f"- Фамилия: {person.get('meaningful_last_name', '')}",
+            f"- Доп. информация: {person.get('meaningful_about', '')}",
+            f"- Ссылки, названия: {person.get('extracted_links', [])}",
         ]
 
-        prompt = self._render_prompt("postcheck2", pieces=pieces, summary=summary, urls=urls)
+        prompt = self.prompts.render(
+            "postcheck2",
+            pieces=pieces,
+            summary=summary,
+            urls=urls
+        )
+
         if not prompt:
             return False
 
-        response, _ = await self._async_request_llm(
-            prompt=prompt,
-            model=self.config.check_model,
-            response_format="json_object"
-        )
-
-        return response.get("is_valid", False) if isinstance(response, dict) else False
+        response = await self.ask_json(prompt, model=self.config.model["check"])
+        return bool(response.get("is_valid"))
