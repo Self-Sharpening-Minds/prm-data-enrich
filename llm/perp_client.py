@@ -18,54 +18,34 @@ class PerplexityClient(BaseLLMClient):
             extra={"perplexity_model": self.config.model.get("perplexity")}
         )
 
-    async def async_ask_perplexity(
-        self,
-        prompt: str,
-        model: str | None = None,
-        temperature: float = 0.2,
-        use_osint_preset: bool = True,
-    ) -> tuple[str, list[str]]:
-        """Отправляет запрос в Perplexity модель и возвращает текст и список URL."""
-        model_to_use = model or self.config.model["perplexity"]
-        extra_body = self._build_osint_params() if use_osint_preset else {}
-
-        resp = await self.request(
-            prompt=prompt,
-            model=model_to_use,
-            format="text",
-            temperature=temperature,
-            extra=extra_body,
-        )
-
-        text = resp.text or ""
-        urls = self._extract_urls_from_response(resp.raw)
-        return text, urls
-
-    async def async_search_info(
+    async def search_info(
         self,
         person_data: dict
     ) -> dict:
         """Ищет информацию о человеке через Perplexity."""
         pieces = self._build_search_pieces(person_data)
         prompt = self.prompts.render("perp_search", pieces=pieces)
-        text, urls = await self.async_ask_perplexity(prompt)
-        summary = text.strip() or None
+        resp = await self.request(
+            prompt=prompt,
+            model=self.config.model["perplexity"],
+            response_format={"type": "text"},
+            temperature=0.3,
+            extra_body=self._build_osint_params(),
+        )
+        summary = (resp.text or "").strip() or None
+        urls = self._extract_urls_from_response(resp.raw)
         return {"summary": summary, "urls": urls}
 
     @staticmethod
     def _build_osint_params() -> dict:
-        """Создаёт словарь OSINT-настроек запроса."""
+        """Создаёт словарь OSINT-настроек запроса для perp."""
         return {
             "top_p": 0.9,
             "presence_penalty": 0.3,
             "frequency_penalty": 0.2,
-            "max_tokens": 30,
         }
 
-    def _build_search_pieces(
-        self,
-        person_data: dict
-    ) -> list[str]:
+    def _build_search_pieces(self, person_data: dict) -> list[str]:
         """Формирует список строк для шаблона perp_search."""
         first_name = person_data.get("meaningful_first_name", "")
         last_name = person_data.get("meaningful_last_name", "")

@@ -21,13 +21,13 @@ class LlmClient(BaseLLMClient):
         prompt: str,
         *,
         model: str | None = None,
-        temperature: float = 0.0
+        temperature: float = 0.0 # TODO: какая температура лучше для задач? = None
     ) -> dict[str, Any]:
         """Удобный метод получения JSON от модели."""
         response: LlmResponse = await self.request(
             prompt=prompt,
             model=model,
-            format="json",
+            response_format={"type": "json_object"},
             temperature=temperature,
         )
 

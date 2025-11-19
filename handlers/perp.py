@@ -61,7 +61,7 @@ async def perform_perplexity_search(perp_client: PerplexityClient, person_data: 
         dict: Результат поиска с ключами 'summary', 'urls', 'confidence'.
     """
     logger.debug(f"[Воркер #{worker_id}][person_id={person_data['person_id']}] Запуск Perplexity поиска")
-    return await perp_client.async_search_info(person_data=person_data)
+    return await perp_client.search_info(person_data=person_data)
 
 
 async def run(worker_id: int, person_id: int) -> bool:

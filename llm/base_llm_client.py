@@ -58,39 +58,27 @@ class BaseLLMClient:
         prompt: str,
         model: str | None = None,
         *,
-        format: str = "text",
-        temperature: float = 0.0,
         max_tokens: int | None = None,
         n: int = 1,
-        extra: dict | None = None,
+        response_format: dict | None = None,
+        temperature: float | None = None,
+        extra_body: dict | None = None,
     ) -> LlmResponse:
-
-        model_name = model or self.config.model["default"]
-
-        body = extra.copy() if extra else {}
-        if max_tokens:
-            body["max_tokens"] = max_tokens
-
-        response_format = (
-            {"type": "json_object"}
-            if format == "json"
-            else None
-        )
-
+        model = model or self.config.model["default"]
         try:
             completion = await self.client.chat.completions.create(
-                model=model_name,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=temperature,
+                model=model,
+                max_tokens=max_tokens,
                 n=n,
                 response_format=response_format,
-                extra_body=body or None,
+                temperature=temperature,
+                extra_body=extra_body,
             )
 
             msg = completion.choices[0].message
             raw_text = msg.content if msg else None
-
-            data_json = self._parse_json(raw_text) if format == "json" else None
+            data_json = self._parse_json(raw_text) if response_format == {"type": "json_object"} else None
 
             return LlmResponse(
                 text=raw_text,
@@ -104,7 +92,7 @@ class BaseLLMClient:
 
             return LlmResponse(
                 text=None,
-                json={} if format == "json" else None,
+                json={} if response_format == {"type": "json_object"} else None,
                 raw=None,
                 usage=None,
             )
