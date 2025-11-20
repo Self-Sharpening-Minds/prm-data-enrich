@@ -23,6 +23,7 @@ class PerplexityClient(BaseLLMClient):
             temperature=0.3,
             extra_body=self._build_osint_params(),
         )
+        self.logger.info(response)
         summary = (response.text or "").strip() or None
         urls = self._extract_urls_from_response(response.raw)
         return {"summary": summary, "urls": urls}
@@ -30,20 +31,21 @@ class PerplexityClient(BaseLLMClient):
     @staticmethod
     def _build_osint_params() -> dict:
         """Создаёт словарь OSINT-настроек запроса для perp."""
-        # ​"max_tokens_per_page": 150
-        # "return_images": True,
-        # "image_format_filter": ["gif", "jpg", "png", "webp"],
-        # "return_related_questions": True,
-        # "search_mode": "web"
-        # "search_language_filter": ["en", "ru"]
-        # "web_search_options": {"search_context_size": "medium"}
         return {
             "top_p": 0.9,
             "presence_penalty": 0.3,
             "frequency_penalty": 0.2,
-            "web_search_options": {"search_context_size": "high"}, # medium low
+            "web_search_options": {
+                "search_context_size": "high",  # medium low
+                "include_domains": None,
+            },
             "search_language_filter": ["en", "ru"],
-            "return_related_questions": True,
+            "return_related_questions": False,
+            "search_mode": "web",
+            "max_tokens_per_page": 150,
+            "num_search_results": None,
+            "return_images": True,
+            "image_format_filter": ["gif", "jpg", "png", "webp"],
         }
 
     def _build_search_pieces(self, person_data: dict) -> list[str]:
