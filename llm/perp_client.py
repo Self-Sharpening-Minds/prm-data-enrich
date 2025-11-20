@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from config import LlmConfig
@@ -9,11 +10,9 @@ class PerplexityClient(BaseLLMClient):
 
     def __init__(self, config: LlmConfig | None = None) -> None:
         super().__init__(config=config)
+        self.logger = logging.getLogger(__name__)
 
-    async def search_info(
-        self,
-        person_data: dict
-    ) -> dict:
+    async def search_info(self, person_data: dict) -> dict:
         """Ищет информацию о человеке через Perplexity."""
         pieces = self._build_search_pieces(person_data)
         prompt = self.prompts.render("perp_search", pieces=pieces)
@@ -31,10 +30,20 @@ class PerplexityClient(BaseLLMClient):
     @staticmethod
     def _build_osint_params() -> dict:
         """Создаёт словарь OSINT-настроек запроса для perp."""
+        # ​"max_tokens_per_page": 150
+        # "return_images": True,
+        # "image_format_filter": ["gif", "jpg", "png", "webp"],
+        # "return_related_questions": True,
+        # "search_mode": "web"
+        # "search_language_filter": ["en", "ru"]
+        # "web_search_options": {"search_context_size": "medium"}
         return {
             "top_p": 0.9,
             "presence_penalty": 0.3,
             "frequency_penalty": 0.2,
+            "web_search_options": {"search_context_size": "high"}, # medium low
+            "search_language_filter": ["en", "ru"],
+            "return_related_questions": True,
         }
 
     def _build_search_pieces(self, person_data: dict) -> list[str]:

@@ -54,6 +54,12 @@ class BaseLLMClient:
     ) -> LlmResponse:
         model = model or self.config.model["default"]
         try:
+            # messages = [
+            #     {"role": "system", "content": "You are a helpful research assistant."},
+            #     {"role": "user", "content": "What are the main causes of climate change?"},
+            #     {"role": "assistant", "content": "The main causes of climate change include..."},
+            #     {"role": "user", "content": "What are some potential solutions?"}
+            # ] #из офиц гайда
             completion = await self.client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model=model,
