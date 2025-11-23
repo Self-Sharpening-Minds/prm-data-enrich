@@ -86,7 +86,7 @@ def extract_links(*fields: str | None) -> list[str]:
             if matches:
                 # logger.debug(f"extract_links: найдено {len(matches)} ссылок в '{field[:30]}...'")
                 found_items.extend(matches)
-    
+
     unique_links = list(dict.fromkeys(found_items))
     logger.debug(f"Извлечено {len(unique_links)} уникальных ссылок")
     return unique_links

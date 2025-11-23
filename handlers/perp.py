@@ -61,12 +61,7 @@ async def perform_perplexity_search(perp_client: PerplexityClient, person_data: 
         dict: Результат поиска с ключами 'summary', 'urls', 'confidence'.
     """
     logger.debug(f"[Воркер #{worker_id}][person_id={person_data['person_id']}] Запуск Perplexity поиска")
-    return await perp_client.async_search_info(
-        first_name=person_data.get("meaningful_first_name", ""),
-        last_name=person_data.get("meaningful_last_name", ""),
-        about=person_data.get("meaningful_about", ""),
-        extracted_links=person_data.get("extracted_links", [])
-    )
+    return await perp_client.search_info(person_data=person_data)
 
 
 async def run(worker_id: int, person_id: int) -> bool:
@@ -90,7 +85,7 @@ async def run(worker_id: int, person_id: int) -> bool:
 
         summary = search_result.get("summary", "")
         urls = search_result.get("urls", [])
-        confidence = search_result.get("confidence", "low")
+        confidence = search_result.get("confidence", "заглушка")  # TODO: система confidence
 
         await save_perplexity_result(db, person_id, summary, urls, confidence)
         logger.debug(f"[Воркер #{worker_id}][person_id={person_id}] ✅ Perplexity поиск завершен успешно")

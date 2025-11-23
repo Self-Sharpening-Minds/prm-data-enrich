@@ -196,7 +196,7 @@ async def _run_single_command(args) -> None:
         await export_to_json()
     elif args.qt:
         await clean_and_create_db()
-        await run_workers(2)
+        await run_workers(1)
         await export_to_html()
         await export_to_json()
     elif args.run > 0:
