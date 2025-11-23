@@ -23,7 +23,7 @@ class PerplexityClient(BaseLLMClient):
             temperature=0.3,
             extra_body=self._build_osint_params(),
         )
-        self.logger.info(response)
+        
         summary = (response.text or "").strip() or None
         urls = self._extract_urls_from_response(response.raw)
         return {"summary": summary, "urls": urls}
